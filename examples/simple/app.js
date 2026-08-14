@@ -81,3 +81,7 @@ function main() {
 }
 
 main();
+
+window.someFunction = () => {};
+
+someFunction();

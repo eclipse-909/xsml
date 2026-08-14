@@ -1,7 +1,11 @@
 # JSML
 Very simple frontend JS framework.
 
-## Run example
+JSML stands for JS Markup Language.
+
+## Run examples
 ```sh
-node server/server.js examples/simple
+cd examples/simple
+npm i
+npm run dev
 ```
