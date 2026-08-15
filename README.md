@@ -17,6 +17,18 @@ npm run dev
 ```
 
 ## Reference
+Also see the [simple example](./examples/simple/app.js).
+* [Start](#start)
+* [Elements](#elements)
+  * [HTMLElement vs String vs Function](#when-to-use-a-function-vs-htmlelement-or-string)
+  * [Attributes](#attributes)
+* [Components](#components)
+  * [Props](#props)
+  * [Control Flow](#control-flow)
+* [Signals](#signals)
+  * [Control Flow](#control-flow-1)
+* [Routing & Single-Page Applications](#routing--single-page-applications)
+  * [Routing Table](#routing-table)
 ### Start
 Create the following files and copy jsml.js into your project.
 ```txt
@@ -92,7 +104,7 @@ Signal state is reset, but you can easily figure out how to preserve it.
 
 #### Attributes
 Attributes are simply defined as an object in the first argument of
-an element function like this
+an element function like this:
 ```js
 div(
     {id: "some-id",
@@ -154,7 +166,7 @@ you'll probably want to factor the logic out to a separate function.
 
 There are many ways to say that you either want to render an element or
 not render it. For example, you can set `display: hidden;` in the style.
-You can also use `undefined` to represent an element that shouldn't be rendered;
+You can also use `undefined` to represent an element that shouldn't be rendered.
 ```js
 const someCondition = false;
 div({},
@@ -174,14 +186,14 @@ It will look like this
 Signals are the reactive element of JSML.
 The dollar sign (`$`) represents "signal" everywhere in the code.
 
-Create a signal with any data
+Create a signal with any data.
 ```js
 const someState0 = new $("initial state");
 const someState1 = new $(69);
 const someState2 = new $({someObject: ""});
 const someState3 = new $(undefined);
 ```
-Create a counter button and label
+Create a counter button and label.
 ```js
 function index() {
     const counter = new $(0);
@@ -205,7 +217,7 @@ You can manually get, set, and update the value of a signal.
 ```js
 const someState = new $("initial state");
 someState.get(); // "initial state"
-someState.update(value => value += " and some more state");
+someState.update(value => value + " and some more state");
 someState.get(); // "initial state and some more state"
 someState.set("new state");
 someState.get(); // "new state"
@@ -213,7 +225,7 @@ someState.get(); // "new state"
 Setting and updating will notify subscribers of a change.
 
 You can manually add a subscriber to a signal if you need something to happen
-when a signal updates and it doesn't involve modifying an element
+when a signal updates and it doesn't involve modifying an element.
 ```js
 const someState = new $(0);
 someState.pushSub(value => console.log(`state was updated: ${value}`));
@@ -249,12 +261,12 @@ function component() {
 
 ### Routing & Single-Page Applications
 If you don't use a router, you can make a multipage application.
-Each HTML file will need its own script as an entry point.
+Each HTML file will need its own entry point.
 
 If you use a router, your server has to support client-side routing.
 Vite is a good option for this.
 
-You can simply use a router in your jsml function like this
+You can simply use a router in your jsml function like this:
 ```js
 import { jsml, div, router } from "/jsml.js";
 
@@ -287,7 +299,7 @@ A value can be an HTMLElement, string,
 or a function with no parameters that returns any of these three types.
 It can also be another routing table object.
 
-Here are some examples
+Here are some examples:
 ```js
 router("/", {}, {
     "/": div({}),
@@ -308,7 +320,7 @@ Nested routing tables immediately get folded to make path name lookups easier.
 This is why a function can only return an HTMLElement, string, or function,
 but not another routing table.
 
-The previous example will turn into this
+The previous example will turn into this:
 ```js
 router("/", {}, {
     "/": div({}),
