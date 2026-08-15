@@ -1,10 +1,7 @@
-//////////////////////
-// Type Definitions //
-//////////////////////
-
+//#region Type Definitions
 /**
  * A ChildNode is a child HTMLElement or string of another element.
- * @typedef {(HTMLElement|string)} ChildElement
+ * @typedef {(HTMLElement|string|Component)} ChildElement
  */
 
 /**
@@ -42,7 +39,7 @@
  *   }
  * })
  * ```
- * @typedef {Object.<string, (Routes|HTMLElement|string)>} Routes
+ * @typedef {Object.<string, (Routes|HTMLElement|string|Component)>} Routes
  */
 
 /**
@@ -51,28 +48,49 @@
  */
 
 /**
- * @callback $dep
+ * @callback Subscriber
  * @param {any} value
  */
 
 /**
- * This callback defines how child elements should be created when a signal is updated.
+ * @callback Updater
+ * @param {any} value
+ * @returns {any}
+ */
+
+/**
+ * This callback defines how a child element should be created when a signal is updated.
+ * Since this is a function, it shouldn't return a function.
  * @callback Procreate
  * @param {any} $state
- * @return {ChildElement[]}
+ * @return {(HTMLElement|string)}
+ */
+
+/**
+ * This callback defines how child elements should be created when a signal is updated.
+ * Since this is a function, it shouldn't return a function.
+ * @callback ProcreateMany
+ * @param {any} $state
+ * @return {(HTMLElement|string)[]}
  */
 
 /**
  * Maps an event into data used to set the value of a signal
  * @callback MapEvent
  * @param {Event} event
+ * @param {any} signalValue
  * @return {any}
  */
 
-/////////////
-// Signals //
-/////////////
+/**
+ * Maps an event into data used to set the value of a signal
+ * @callback MapAttr
+ * @param {any} signalValue
+ * @return {any}
+ */
+//#endregion
 
+//#region Signals
 /**
  * Creates a new signal with initial state.
  * @param {any} init
@@ -84,19 +102,17 @@ export function $(init) {
 	 */
 	this._state = init;
 	/**
-	 * @type {$dep[]}
+	 * @type {Subscriber[]}
 	 * @protected
 	 */
-	this._deps = [];
+	this._subs = [];
 }
 
 /**
  * Gets the state of the signal.
  * @return {any}
  */
-$.prototype.get = function() {
-	return this._state;
-};
+$.prototype.get = function() {return this._state;}
 
 /**
  * Sets the state of this signal and updates every subscriber.
@@ -104,10 +120,27 @@ $.prototype.get = function() {
  */
 $.prototype.set = function(value) {
 	this._state = value;
-	for (const dep of this._deps) {
-		dep(value);
+	for (const sub of this._subs) {
+		sub(value);
 	}
 };
+
+/**
+ * Uses a function to modify the current value then notify all subscribers.
+ * @param {Updater} callback
+ */
+$.prototype.update = function(callback) {
+	this._state = callback(this._state);
+	for (const sub of this._subs) {
+		sub(this._state);
+	}
+};
+
+/**
+ * Adds a custom subscriber to this signal which will be called when the signal's value is updated.
+ * @param {Subscriber} sub
+ */
+$.prototype.pushSub = function(sub) {this._subs.push(sub);}
 
 /**
  * Registers this element's event listener to map the event then use that to set the signal.
@@ -119,7 +152,7 @@ $.prototype.set = function(value) {
  * @return {HTMLElement}
  */
 HTMLElement.prototype.$eventIn = function(signal, event, mapEvent) {
-	this.addEventListener(event, e => signal.set(mapEvent(e)));
+	this.addEventListener(event, e => signal.set(mapEvent(e, signal.get())));
 	return this;
 };
 
@@ -129,10 +162,29 @@ HTMLElement.prototype.$eventIn = function(signal, event, mapEvent) {
  * You should not call this multiple times on an element for the same attribute.
  * @param {$} signal
  * @param {string} attr
+ * @param {MapAttr} mapAttr
  * @return {HTMLElement}
  */
-HTMLElement.prototype.$attrOut = function(signal, attr) {
-	signal._deps.push(value => this[attr] = value);
+HTMLElement.prototype.$attrOut = function(signal, attr, mapAttr) {
+	const update = value => this[attr] = mapAttr(value);
+	update(signal.get());
+	signal._subs.push(update);
+	return this;
+};
+
+/**
+ * Registers this element's children to be replaced with the result of the procreate callback
+ * when the set method is called on this signal.
+ * This can be called multiple on times an element for different attributes.
+ * You should not call this multiple times on an element for the same attribute.
+ * @param {$} signal
+ * @param {ProcreateMany} procreate
+ * @return {HTMLElement}
+ */
+HTMLElement.prototype.$childrenOut = function(signal, procreate) {
+	const update = value => this.replaceChildren(...procreate(value));
+	update(signal.get());
+	signal._subs.push(update);
 	return this;
 };
 
@@ -145,17 +197,15 @@ HTMLElement.prototype.$attrOut = function(signal, attr) {
  * @param {Procreate} procreate
  * @return {HTMLElement}
  */
-HTMLElement.prototype.$childrenOut = function(signal, procreate) {
-	signal._deps.push(value => this.replaceChildren(...procreate(value)));
+HTMLElement.prototype.$childOut = function(signal, procreate) {
+	const update = value => this.replaceChildren(procreate(value));
+	update(signal.get());
+	signal._subs.push(update);
 	return this;
 };
+//#endregion
 
-//TODO
-
-//////////////
-// Elements //
-//////////////
-
+//#region Elements
 /**
  * This method allows modification of an element from within the component structure.
  * ## Example
@@ -171,28 +221,44 @@ HTMLElement.prototype.and = function(callback) {
 };
 
 /**
+ * Appends `child` as a child element of `parent`
+ * @param {HTMLElement} parent
+ * @param {ChildElement} child
+ * @throws {Error}
+ */
+function renderElement(parent, child) {
+	const childType = typeof child;
+	if (child instanceof HTMLElement) {
+		parent.appendChild(child);
+	} else if (childType === 'function') {
+		renderElement(parent, child());
+	} else if (childType === 'string') {
+		parent.textContent = (parent.textContent ?? "") + child;
+	} else if (childType === 'undefined') {
+		// undefined is helpful for conditionally rendering elements
+	} else {
+		throw Error(`Invalid child type. Expected HTMLElement/Component/string, got ${child.constructor}`);
+	}
+}
+
+/**
  * Basic element constructor. You shouldn't need this unless you need to create an element with a custom tag name.
  * For example, you might have a custom web component.
  * @param {string} name
  * @param {Attrs} attrs
  * @param  {...ChildElement} children
  * @returns {HTMLElement}
+ * @throws {Error}
  */
 export function element(name, attrs, ...children) {
-	const element = document.createElement(name);
+	const parent = document.createElement(name);
 	for (const attr in attrs) {
-		element.setAttribute(attr, attrs[attr]);
+		parent.setAttribute(attr, attrs[attr]);
 	}
 	for (const child of children) {
-		if (child instanceof HTMLElement) {
-			element.appendChild(child);
-		} else if (typeof child === 'string') {
-			element.textContent += child;
-		} else {
-			throw Error(`Invalid child type. Expected HTMLElement|string, got ${child.constructor}`);
-		}
+		renderElement(parent, child);
 	}
-	return element;
+	return parent;
 }
 
 /**
@@ -207,15 +273,33 @@ function collapseRoutes(routes, collapsed = {}, pathname = "") {
 		const route = routes[path];
 		const newPath = pathname + path;
 		const routeType = typeof route;
-		if (routeType === 'string' || route instanceof HTMLElement) {
+		if (routeType === 'string' || routeType === 'function' || route instanceof HTMLElement) {
 			collapsed[newPath] = route;
 		} else if (routeType === 'object') {
 			collapseRoutes(route, collapsed, newPath);
 		} else {
-			throw Error(`Invalid router configuration. Expected type HTMLElement|string, got ${routeType}`);
+			throw Error(`Invalid router configuration. Expected type HTMLElement/Component/Route/string, got ${routeType}`);
 		}
 	}
 	return collapsed;
+}
+
+/**
+ * @param {HTMLElement} router
+ * @param {(Routes|HTMLElement|string|Component)} content
+ * @throws {Error}
+ */
+function displayRoute(router, content) {
+	const contentType = typeof content;
+	if (contentType === 'string') {
+		router.textContent = content;
+	} else if (contentType === 'function') {
+		displayRoute(router, content());
+	} else if (content instanceof HTMLElement) {
+		router.replaceChildren(content);
+	} else {
+		throw Error(`Invalid route for pathname: ${location.pathname} - content: ${content}`);
+	}
 }
 
 /**
@@ -224,22 +308,33 @@ function collapseRoutes(routes, collapsed = {}, pathname = "") {
  * @param {Routes} routes
  * @throws {Error}
  */
-function render(router, notFoundPath, routes) {
-	// const router = document.getElementById("jsml-router");
-	const route = routes[location.pathname] ?? routes[notFoundPath];
-	if (typeof route === 'string') {
-		router.textContent = route;
-	} else if (route instanceof HTMLElement) {
-		router.replaceChildren(route);
-	} else {
-		throw Error(`Invalid route for pathname: ${location.pathname} - route: ${route}`);
-	}
+function renderRoute(router, notFoundPath, routes) {
+	const content = routes[location.pathname] ?? routes[notFoundPath];
+	displayRoute(router, content);
 }
 
 /**
  * Creates a router for a client-side rendered single-page application.
  * You must only create one router in the whole application.
  * Creating multiple routers will lead to weird behavior.
+ *
+ * Routes are used to configure a router. It is recommended to use a "/" path, but it's not required.
+ * You can specify a fallback path and compose router objects.
+ * The route must either be an HTMLElement, string, or a recursive route object.
+ * The router directly reads the `document.pathname`.
+ * The router does not check to make sure your paths are reachable or has duplicates.
+ * ## Example
+ * ```js
+ * router("/404", {}, {
+ *   "/": index(),
+ *   "/404": notFound(),
+ *   "/combined/path": somePage(),
+ *   "/composed": {
+ *     "/path": otherPage(),
+ *     "/hello": "Hello, World!"
+ *   }
+ * })
+ * ```
  * @param {string} notFoundPath
  * @param {Attrs} attrs
  * @param {Routes} routes
@@ -254,34 +349,28 @@ export function router(notFoundPath, attrs, routes) {
 		if (link && link.origin === location.origin) {
 			e.preventDefault();
 			history.pushState({}, '', link.pathname);
-			render(router, notFoundPath, collapsedRoutes);
+			renderRoute(router, notFoundPath, collapsedRoutes);
 		}
 	});
-	window.onpopstate = (_event) => render(router, notFoundPath, collapsedRoutes);
-	render(router, notFoundPath, collapsedRoutes);
+	window.onpopstate = _ => renderRoute(router, notFoundPath, collapsedRoutes);
+	renderRoute(router, notFoundPath, collapsedRoutes);
 	return router;
 }
 
 /**
  * This is the entry point of the jsml app.
- * This creates the root node under the body and attaches everything to it.
- * @param {(HTMLElement|string)} ui
+ * This appends ui as a child of the body after all other children.
+ * @param {ChildElement} ui
  */
-export function jsml(ui) {
-	const jsmlApp = document.createElement("div");
-	jsmlApp.setAttribute("id", "jsml-app");
-	document.body.appendChild(jsmlApp);
-	if (ui instanceof HTMLElement) {
-		jsmlApp.replaceChildren(ui);
-	} else if (typeof ui === 'string') {
-		jsmlApp.textContent = ui;
-	} else {
-		throw Error(`Expected main to return HTMLElement or string, got ${typeof ui}`);
-	}
-}
+export function jsml(ui) {renderElement(document.body, ui);}
+//#endregion
 
-// The rest of the file is functions for standard HTML5 tags
-// TODO: remove the tags that don't belong in the body (html, meta, body, etc)
+//#region Tag Functions
+// Functions for standard HTML5 tags.
+// Only tags that can go in a body are included (base, html, head, and body are excluded).
+// Experimental tags are marked as such.
+// Deprecated tags are excluded.
+// See https://developer.mozilla.org/en-US/docs/Web/HTML/Guides/Content_categories
 
 /**
  * @param {Attrs} attrs
@@ -336,12 +425,6 @@ export function b(attrs, ...children) {return element("b", attrs, ...children);}
  * @param  {...ChildElement} children
  * @returns {HTMLElement}
  */
-export function base(attrs, ...children) {return element("base", attrs, ...children);}
-/**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
- * @returns {HTMLElement}
- */
 export function bdi(attrs, ...children) {return element("bdi", attrs, ...children);}
 /**
  * @param {Attrs} attrs
@@ -355,12 +438,6 @@ export function bdo(attrs, ...children) {return element("bdo", attrs, ...childre
  * @returns {HTMLElement}
  */
 export function blockquote(attrs, ...children) {return element("blockquote", attrs, ...children);}
-/**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
- * @returns {HTMLElement}
- */
-export function body(attrs, ...children) {return element("body", attrs, ...children);}
 /**
  * @param {Attrs} attrs
  * @param  {...ChildElement} children
@@ -482,6 +559,13 @@ export function em(attrs, ...children) {return element("em", attrs, ...children)
  */
 export function embed(attrs, ...children) {return element("embed", attrs, ...children);}
 /**
+ * @experimental https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/fencedframe
+ * @param {Attrs} attrs
+ * @param  {...ChildElement} children
+ * @returns {HTMLElement}
+ */
+export function fencedframe(attrs, ...children) {return element("fencedframe", attrs, ...children);}
+/**
  * @param {Attrs} attrs
  * @param  {...ChildElement} children
  * @returns {HTMLElement}
@@ -511,6 +595,13 @@ export function footer(attrs, ...children) {return element("footer", attrs, ...c
  * @returns {HTMLElement}
  */
 export function form(attrs, ...children) {return element("form", attrs, ...children);}
+/**
+ * @experimental https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/geolocation
+ * @param {Attrs} attrs
+ * @param  {...ChildElement} children
+ * @returns {HTMLElement}
+ */
+export function geolocation(attrs, ...children) {return element("geolocation", attrs, ...children);}
 /**
  * @param {Attrs} attrs
  * @param  {...ChildElement} children
@@ -552,12 +643,6 @@ export function h6(attrs, ...children) {return element("h6", attrs, ...children)
  * @param  {...ChildElement} children
  * @returns {HTMLElement}
  */
-export function head(attrs, ...children) {return element("head", attrs, ...children);}
-/**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
- * @returns {HTMLElement}
- */
 export function header(attrs, ...children) {return element("header", attrs, ...children);}
 /**
  * @param {Attrs} attrs
@@ -571,12 +656,6 @@ export function hgroup(attrs, ...children) {return element("hgroup", attrs, ...c
  * @returns {HTMLElement}
  */
 export function hr(attrs, ...children) {return element("hr", attrs, ...children);}
-/**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
- * @returns {HTMLElement}
- */
-export function html(attrs, ...children) {return element("html", attrs, ...children);}
 /**
  * @param {Attrs} attrs
  * @param  {...ChildElement} children
@@ -660,13 +739,13 @@ export function mark(attrs, ...children) {return element("mark", attrs, ...child
  * @param  {...ChildElement} children
  * @returns {HTMLElement}
  */
-export function menu(attrs, ...children) {return element("menu", attrs, ...children);}
+export function math(attrs, ...children) {return element("math", attrs, ...children);}
 /**
  * @param {Attrs} attrs
  * @param  {...ChildElement} children
  * @returns {HTMLElement}
  */
-export function meta(attrs, ...children) {return element("meta", attrs, ...children);}
+export function menu(attrs, ...children) {return element("menu", attrs, ...children);}
 /**
  * @param {Attrs} attrs
  * @param  {...ChildElement} children
@@ -721,12 +800,6 @@ export function output(attrs, ...children) {return element("output", attrs, ...c
  * @returns {HTMLElement}
  */
 export function p(attrs, ...children) {return element("p", attrs, ...children);}
-/**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
- * @returns {HTMLElement}
- */
-export function param(attrs, ...children) {return element("param", attrs, ...children);}
 /**
  * @param {Attrs} attrs
  * @param  {...ChildElement} children
@@ -805,6 +878,12 @@ export function section(attrs, ...children) {return element("section", attrs, ..
  * @returns {HTMLElement}
  */
 export function select(attrs, ...children) {return element("select", attrs, ...children);}
+/**
+ * @param {Attrs} attrs
+ * @param  {...ChildElement} children
+ * @returns {HTMLElement}
+ */
+export function slot(attrs, ...children) {return element("slot", attrs, ...children);}
 /**
  * @param {Attrs} attrs
  * @param  {...ChildElement} children
@@ -944,6 +1023,7 @@ export function u(attrs, ...children) {return element("u", attrs, ...children);}
  */
 export function ul(attrs, ...children) {return element("ul", attrs, ...children);}
 /**
+ * Var is capitalized to not conflict with the javascript keyword var.
  * @param {Attrs} attrs
  * @param  {...ChildElement} children
  * @returns {HTMLElement}
@@ -961,3 +1041,4 @@ export function video(attrs, ...children) {return element("video", attrs, ...chi
  * @returns {HTMLElement}
  */
 export function wbr(attrs, ...children) {return element("wbr", attrs, ...children);}
+//#endregion

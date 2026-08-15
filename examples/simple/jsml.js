@@ -1,1 +1,1 @@
-../../src/jsml.js
+../../jsml.js

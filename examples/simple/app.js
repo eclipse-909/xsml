@@ -1,26 +1,36 @@
-import {jsml, div, a, button, router} from "/jsml.js";
+import {jsml, $, div, a, button, router, label, ul, li} from "/jsml.js";
 
 function printSomething() {
 	console.log("hello world");
 }
 
 function index() {
+	const counter = new $(0);
 	return div(
 		{style: "width:100%;height:100%;background:red;"},
 		div({}, "Hello, World!"),
-		a({
-			href: "/other"},
+		a(
+			{href: "/other"},
 			button({}, "Go to other page")
 		),
-		button({},
-			"Print something"
-		).and(self => self.onclick = printSomething)
+		button({}, "Print something")
+			.and(self => self.onclick = printSomething),
+		div({},
+			button({"id": "counter-btn"}, "Increment")
+				.$eventIn(counter, "click", (_, value) => value + 1),
+			label({"for": "counter-btn"})
+				.$attrOut(counter, "textContent", value => `Counter: ${value}`)
+		),
+		ul({},
+			...["first", "second", "third"].map(item => li({}, item))
+		)
 	);
 }
 
 function other() {
-	return div({
-		style: "width:100%;height:100%;background:red;"},
+	const list = new $(["first", "second", "third"]);
+	return div(
+		{style: "width:100%;height:100%;background:red;"},
 		div({}, "Other Page"),
 		a({
 			href: "/"},
@@ -29,7 +39,10 @@ function other() {
 		a({
 			href: "/path/to"},
 			button({}, "Go to path")
-		)
+		),
+
+		ul({})
+			.$childrenOut(list, l => l.map(item => li({}, item)))
 	);
 }
 
@@ -81,7 +94,3 @@ function main() {
 }
 
 main();
-
-window.someFunction = () => {};
-
-someFunction();
