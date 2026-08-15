@@ -3,14 +3,11 @@
 <head>
 	<meta charset="UTF-8">
 	<title>redirecting...</title>
-	<script type="text/javascript">
-        const segmentCount = 1; // Set to 1 if using a project page (e.g., username.github.io/repo-name)
-        const l = window.location;
-        l.replace(l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') +
-            l.pathname.split('/').slice(0, 1 + segmentCount).join('/') + '/?p=' +
-            l.pathname.slice(1).split('/').slice(segmentCount).join('/').replace(/&/g, '~and~') +
-            (l.search ? '&q=' + l.search.slice(1).replace(/&/g, '~and~') : '') +
-            l.hash);
+	<script>
+		// Preserve the full requested path (including /jsml prefix) as a query param,
+		// then redirect to the app root so index.html can restore it.
+		const path = location.pathname + location.search + location.hash;
+		location.replace('/jsml/?p=' + encodeURIComponent(path));
 	</script>
 </head>
 <body></body>

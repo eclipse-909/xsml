@@ -9,6 +9,15 @@
 	<title>JSML</title>
 </head>
 <body>
+	<script>
+		(function () {
+			const params = new URLSearchParams(location.search);
+			const redirectPath = params.get('p');
+			if (redirectPath) {
+				history.replaceState(null, '', redirectPath);
+			}
+		})();
+	</script>
 	<script type="module" src="gh-pages/app.js"></script>
 </body>
 </html>
