@@ -1,4 +1,4 @@
-import {jsml, $, div, a, button, router, label, ul, li} from "/jsml.js";
+import {jsml, $, div, a, button, router, label, ul, li} from "./jsml.js";
 
 function printSomething() {
 	console.log("hello world");
