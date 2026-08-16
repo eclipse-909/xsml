@@ -1,4 +1,4 @@
-import {jsml, $, div, a, button, router, label, ul, li} from "./jsml.js";
+import {jsml, $, div, a, button, router, label, ul, li, link} from "./jsml.js";
 
 function printSomething() {
 	console.log("hello world");
@@ -8,22 +8,30 @@ function index() {
 	const counter = new $(0);
 	return div(
 		{style: "width:100%;height:100%;background:red;"},
-		div({}, "Hello, World!"),
+		div("Hello, World!"),
 		a(
 			{href: "/other"},
-			button({}, "Go to other page")
+			button("Go to other page")
 		),
-		button({}, "Print something")
+		button("Print something")
 			.and(self => self.onclick = printSomething),
-		div({},
+		div(
 			button({"id": "counter-btn"}, "Increment")
 				.$eventIn(counter, "click", (_, value) => value + 1),
 			label({"for": "counter-btn"})
 				.$attrOut(counter, "textContent", value => `Counter: ${value}`)
 		),
-		ul({},
-			...["first", "second", "third"].map(item => li({}, item))
+		ul(
+			["first", "second", "third"].map(item => li(item))
 		)
+	);
+}
+
+function btn(...children) {
+	return button(
+		{class: "btn"},
+		link({href: "./app.css", rel: "stylesheet"}),
+		...children
 	);
 }
 
@@ -31,28 +39,27 @@ function other() {
 	const list = new $(["first", "second", "third"]);
 	return div(
 		{style: "width:100%;height:100%;background:red;"},
-		div({}, "Other Page"),
+		div("Other Page"),
 		a(
 			{href: "/"},
-			button({}, "Return to index")
+			btn("Return to index")
 		),
 		a(
 			{href: "/path/to"},
-			button({}, "Go to path")
+			btn("Go to path")
 		),
-
-		ul({})
-			.$childrenOut(list, l => l.map(item => li({}, item)))
+		ul()
+			.$childrenOut(list, l => l.map(item => li(item)))
 	);
 }
 
 function tofile() {
 	return div(
 		{style: "width:100%;height:100%;background:red;"},
-		div({}, "File Page"),
+		div("File Page"),
 		a(
 			{href: "/path/to/file"},
-			button({}, "Go to file")
+			button("Go to file")
 		)
 	);
 }
@@ -60,10 +67,10 @@ function tofile() {
 function file() {
 	return div(
 		{style: "width:100%;height:100%;background:red;"},
-		div({}, "File Page"),
+		div("File Page"),
 		a(
 			{href: "/"},
-			button({}, "Return to index")
+			button("Return to index")
 		)
 	);
 }
@@ -71,22 +78,22 @@ function file() {
 function notFound() {
 	return div(
 		{style: "width:100%;height:100%;background:red;"},
-		div({}, "404 Not Found"),
+		div("404 Not Found"),
 		a(
 			{href: "/"},
-			button({}, "Return to index")
+			button("Return to index")
 		)
 	);
 }
 
 jsml(
-	router("/404", {}, {
+	router("/404", {
 		"/": index(),
 		"/other": other(),
 		"/path": {
 			"/to": tofile(),
 			"/to/file": file()
 		},
-		"/404": notFound()
+		"/404": notFound
 	})
 );

@@ -4,7 +4,7 @@ import {notFound} from "./pages/notFound.js";
 import {docs} from "./pages/docs.js";
 
 jsml(
-	router("/jsml/not-found", {}, {
+	router("/jsml/not-found", {
 		"/jsml": { // gh pages puts the site at /jsml
 			"/": index,
 			"/not-found": notFound,

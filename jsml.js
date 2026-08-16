@@ -1,7 +1,7 @@
 //#region Type Definitions
 /**
  * A ChildElement is an HTMLElement/string/function that represents the child of another element.
- * @typedef {(HTMLElement|string|Component)} ChildElement
+ * @typedef {(HTMLElement|string|Component|ChildElement[])} ChildElement
  */
 
 /**
@@ -15,7 +15,7 @@
  * This callback allows modification of an element from within the component structure.
  * ## Example
  * ```js
- * button({}).and(btn => btn.onclick = someFunction)
+ * button().and(btn => btn.onclick = someFunction)
  * ```
  * @callback AndCallback
  * @param {HTMLElement} element
@@ -29,7 +29,7 @@
  * The router does not check to make sure your paths are reachable or has duplicates.
  * ## Example
  * ```js
- * router("/404", {}, {
+ * router("/404", {
  *   "/": index(),
  *   "/404": notFound(),
  *   "/combined/path": somePage(),
@@ -93,6 +93,21 @@
  */
 //#endregion
 
+//#region Library Checks
+function checkSymbolConflicts() {
+	const defined = [];
+	for (const name of ['and', '$eventIn', '$attrOut', '$childrenOut', '$childOut']) {
+		if (HTMLElement.prototype[name]) {
+			defined.push(name);
+		}
+	}
+	if (defined.length > 0) {
+		throw Error(`jsml: methods already defined by something else under HTMLElement.prototype: ${defined.join(", ")}`);
+	}
+}
+checkSymbolConflicts();
+//#endregion
+
 //#region Signals
 /**
  * Creates a new signal with initial state.
@@ -123,9 +138,7 @@ $.prototype.get = function() {return this._state;}
  */
 $.prototype.set = function(value) {
 	this._state = value;
-	for (const sub of this._subs) {
-		sub(value);
-	}
+	this._subs.forEach(notify => notify(value));
 };
 
 /**
@@ -136,9 +149,7 @@ $.prototype.set = function(value) {
  */
 $.prototype.update = function(callback) {
 	this._state = callback(this._state);
-	for (const sub of this._subs) {
-		sub(this._state);
-	}
+	this._subs.forEach(notify => notify(this._state));
 };
 
 /**
@@ -214,7 +225,7 @@ HTMLElement.prototype.$childOut = function(signal, procreate) {
  * It returns the element it was called on so your hierarchy in code is not disrupted.
  * ## Example
  * ```js
- * button({}).and(btn => btn.onclick = someFunction)
+ * button().and(btn => btn.onclick = someFunction)
  * ```
  * @param {AndCallback} callback
  * @returns {HTMLElement}
@@ -231,18 +242,32 @@ HTMLElement.prototype.and = function(callback) {
  * @throws {Error}
  */
 function renderElement(parent, child) {
+	// undefined/null is helpful for conditionally rendering elements
+	if (child === null || child === undefined) {return;}
+
 	const childType = typeof child;
 	if (child instanceof HTMLElement) {
 		parent.appendChild(child);
 	} else if (childType === 'function') {
 		renderElement(parent, child());
 	} else if (childType === 'string') {
-		parent.textContent = (parent.textContent ?? "") + child;
-	} else if (childType === 'undefined') {
-		// undefined is helpful for conditionally rendering elements
+		parent.appendChild(document.createTextNode(child));
+	} else if (Array.isArray(child)) {
+		child.forEach(c => renderElement(parent, c));
 	} else {
-		throw Error(`Invalid child type. Expected HTMLElement/Component/string, got ${child.constructor}`);
+		throw Error(`Invalid element type. Expected HTMLElement/Component/string, got ${child?.constructor ?? child}`);
 	}
+}
+
+/**
+ * @param {(Attrs|ChildElement)} value
+ * @returns {boolean}
+ */
+function isAttr(value) {
+	return typeof value === 'object'
+		&& value !== null
+		&& !(value instanceof HTMLElement)
+		&& !Array.isArray(value);
 }
 
 /**
@@ -250,19 +275,32 @@ function renderElement(parent, child) {
  * You shouldn't need this unless you need to create an element with a custom tag name.
  * For example, you might have a custom web component.
  * @param {string} name
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  * @throws {Error}
  */
-export function element(name, attrs, ...children) {
+export function element(name, attrsOrChild, ...remainingChildren) {
+	let attrs = {};
+	let children = [];
+	if (isAttr(attrsOrChild)) {
+		attrs = attrsOrChild;
+		children = remainingChildren;
+	} else {
+		children = attrsOrChild === undefined
+			? remainingChildren
+			: [attrsOrChild, ...remainingChildren];
+	}
 	const parent = document.createElement(name);
 	for (const attr in attrs) {
-		parent.setAttribute(attr, attrs[attr]);
+		const value = attrs[attr];
+		if (value === false || value === null || value === undefined) {
+			parent.removeAttribute(attr);
+		} else {
+			parent.setAttribute(attr, value);
+		}
 	}
-	for (const child of children) {
-		renderElement(parent, child);
-	}
+	children.forEach(child => renderElement(parent, child));
 	return parent;
 }
 
@@ -290,18 +328,21 @@ function collapseRoutes(routes, collapsed = {}, pathname = "") {
 }
 
 /**
- * @param {HTMLElement} router
+ * @param {HTMLElement} routerElement
  * @param {(Routes|HTMLElement|string|Component)} content
  * @throws {Error}
  */
-function displayRoute(router, content) {
+function displayRoute(routerElement, content) {
 	const contentType = typeof content;
 	if (contentType === 'string') {
-		router.textContent = content;
+		routerElement.textContent = content;
 	} else if (contentType === 'function') {
-		displayRoute(router, content());
+		displayRoute(routerElement, content());
 	} else if (content instanceof HTMLElement) {
-		router.replaceChildren(content);
+		routerElement.replaceChildren(content);
+	} else if (Array.isArray(content)) {
+		routerElement.replaceChildren();
+		content.forEach(c => renderElement(routerElement, c));
 	} else {
 		throw Error(`Invalid route for pathname: ${location.pathname} - content: ${content}`);
 	}
@@ -314,8 +355,7 @@ function displayRoute(router, content) {
  * @throws {Error}
  */
 function renderRoute(router, notFoundPath, routes) {
-	const content = routes[location.pathname] ?? routes[notFoundPath];
-	displayRoute(router, content);
+	displayRoute(router, routes[location.pathname] ?? routes[notFoundPath]);
 }
 
 /**
@@ -330,7 +370,7 @@ function renderRoute(router, notFoundPath, routes) {
  * The router does not check to make sure your paths are reachable or has duplicates.
  * ## Example
  * ```js
- * router("/404", {}, {
+ * router("/404", {
  *   "/": index(),
  *   "/404": notFound(),
  *   "/combined/path": somePage(),
@@ -341,21 +381,32 @@ function renderRoute(router, notFoundPath, routes) {
  * })
  * ```
  * @param {string} notFoundPath
- * @param {Attrs} attrs
- * @param {Routes} routes
+ * @param {(Attrs|Routes)} attrs
+ * @param {(Routes|undefined)} routes
  * @returns {HTMLElement}
  * @throws {Error}
  */
-export function router(notFoundPath, attrs, routes) {
-	const router = div({ id: "jsml-router", ...attrs });
+export function router(notFoundPath, attrs, routes = undefined) {
+	if (routes === undefined) {
+		routes = attrs;
+		attrs = {};
+	}
+	const router = div({ ...attrs, id: "jsml-router" });
 	const collapsedRoutes = collapseRoutes(routes);
 	document.addEventListener('click', (e) => {
 		const link = e.target.closest('a');
-		if (link && link.origin === location.origin) {
-			e.preventDefault();
-			history.pushState({}, '', link.pathname);
-			renderRoute(router, notFoundPath, collapsedRoutes);
-		}
+		if (
+			!link ||
+			link.origin !== location.origin ||
+			link.target === '_blank' ||
+			link.hasAttribute('download') ||
+			e.button !== 0 ||
+			e.metaKey || e.ctrlKey || e.shiftKey || e.altKey
+		) return;
+		if (link.pathname === location.pathname && link.hash) return; // let same-page anchors scroll natively
+		e.preventDefault();
+		history.pushState({}, '', link.pathname);
+		renderRoute(router, notFoundPath, collapsedRoutes);
 	});
 	window.onpopstate = _ => renderRoute(router, notFoundPath, collapsedRoutes);
 	renderRoute(router, notFoundPath, collapsedRoutes);
@@ -378,672 +429,672 @@ export function jsml(ui) {renderElement(document.body, ui);}
 // See https://developer.mozilla.org/en-US/docs/Web/HTML/Guides/Content_categories
 
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function a(attrs, ...children) {return element("a", attrs, ...children);}
+export function a(attrsOrChild = undefined, ...remainingChildren) {return element("a", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function abbr(attrs, ...children) {return element("abbr", attrs, ...children);}
+export function abbr(attrsOrChild = undefined, ...remainingChildren) {return element("abbr", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function address(attrs, ...children) {return element("address", attrs, ...children);}
+export function address(attrsOrChild = undefined, ...remainingChildren) {return element("address", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function area(attrs, ...children) {return element("area", attrs, ...children);}
+export function area(attrsOrChild = undefined, ...remainingChildren) {return element("area", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function article(attrs, ...children) {return element("article", attrs, ...children);}
+export function article(attrsOrChild = undefined, ...remainingChildren) {return element("article", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function aside(attrs, ...children) {return element("aside", attrs, ...children);}
+export function aside(attrsOrChild = undefined, ...remainingChildren) {return element("aside", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function audio(attrs, ...children) {return element("audio", attrs, ...children);}
+export function audio(attrsOrChild = undefined, ...remainingChildren) {return element("audio", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function b(attrs, ...children) {return element("b", attrs, ...children);}
+export function b(attrsOrChild = undefined, ...remainingChildren) {return element("b", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function bdi(attrs, ...children) {return element("bdi", attrs, ...children);}
+export function bdi(attrsOrChild = undefined, ...remainingChildren) {return element("bdi", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function bdo(attrs, ...children) {return element("bdo", attrs, ...children);}
+export function bdo(attrsOrChild = undefined, ...remainingChildren) {return element("bdo", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function blockquote(attrs, ...children) {return element("blockquote", attrs, ...children);}
+export function blockquote(attrsOrChild = undefined, ...remainingChildren) {return element("blockquote", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function br(attrs, ...children) {return element("br", attrs, ...children);}
+export function br(attrsOrChild = undefined, ...remainingChildren) {return element("br", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function button(attrs, ...children) {return element("button", attrs, ...children);}
+export function button(attrsOrChild = undefined, ...remainingChildren) {return element("button", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function canvas(attrs, ...children) {return element("canvas", attrs, ...children);}
+export function canvas(attrsOrChild = undefined, ...remainingChildren) {return element("canvas", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function caption(attrs, ...children) {return element("caption", attrs, ...children);}
+export function caption(attrsOrChild = undefined, ...remainingChildren) {return element("caption", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function cite(attrs, ...children) {return element("cite", attrs, ...children);}
+export function cite(attrsOrChild = undefined, ...remainingChildren) {return element("cite", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function code(attrs, ...children) {return element("code", attrs, ...children);}
+export function code(attrsOrChild = undefined, ...remainingChildren) {return element("code", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function col(attrs, ...children) {return element("col", attrs, ...children);}
+export function col(attrsOrChild = undefined, ...remainingChildren) {return element("col", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function colgroup(attrs, ...children) {return element("colgroup", attrs, ...children);}
+export function colgroup(attrsOrChild = undefined, ...remainingChildren) {return element("colgroup", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function data(attrs, ...children) {return element("data", attrs, ...children);}
+export function data(attrsOrChild = undefined, ...remainingChildren) {return element("data", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function datalist(attrs, ...children) {return element("datalist", attrs, ...children);}
+export function datalist(attrsOrChild = undefined, ...remainingChildren) {return element("datalist", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function dd(attrs, ...children) {return element("dd", attrs, ...children);}
+export function dd(attrsOrChild = undefined, ...remainingChildren) {return element("dd", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function del(attrs, ...children) {return element("del", attrs, ...children);}
+export function del(attrsOrChild = undefined, ...remainingChildren) {return element("del", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function details(attrs, ...children) {return element("details", attrs, ...children);}
+export function details(attrsOrChild = undefined, ...remainingChildren) {return element("details", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function dfn(attrs, ...children) {return element("dfn", attrs, ...children);}
+export function dfn(attrsOrChild = undefined, ...remainingChildren) {return element("dfn", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function dialog(attrs, ...children) {return element("dialog", attrs, ...children);}
+export function dialog(attrsOrChild = undefined, ...remainingChildren) {return element("dialog", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function div(attrs, ...children) {return element("div", attrs, ...children);}
+export function div(attrsOrChild = undefined, ...remainingChildren) {return element("div", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function dl(attrs, ...children) {return element("dl", attrs, ...children);}
+export function dl(attrsOrChild = undefined, ...remainingChildren) {return element("dl", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function dt(attrs, ...children) {return element("dt", attrs, ...children);}
+export function dt(attrsOrChild = undefined, ...remainingChildren) {return element("dt", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function em(attrs, ...children) {return element("em", attrs, ...children);}
+export function em(attrsOrChild = undefined, ...remainingChildren) {return element("em", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function embed(attrs, ...children) {return element("embed", attrs, ...children);}
+export function embed(attrsOrChild = undefined, ...remainingChildren) {return element("embed", attrsOrChild, ...remainingChildren);}
 /**
  * @experimental https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/fencedframe
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function fencedframe(attrs, ...children) {return element("fencedframe", attrs, ...children);}
+export function fencedframe(attrsOrChild = undefined, ...remainingChildren) {return element("fencedframe", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function fieldset(attrs, ...children) {return element("fieldset", attrs, ...children);}
+export function fieldset(attrsOrChild = undefined, ...remainingChildren) {return element("fieldset", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function figcaption(attrs, ...children) {return element("figcaption", attrs, ...children);}
+export function figcaption(attrsOrChild = undefined, ...remainingChildren) {return element("figcaption", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function figure(attrs, ...children) {return element("figure", attrs, ...children);}
+export function figure(attrsOrChild = undefined, ...remainingChildren) {return element("figure", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function footer(attrs, ...children) {return element("footer", attrs, ...children);}
+export function footer(attrsOrChild = undefined, ...remainingChildren) {return element("footer", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function form(attrs, ...children) {return element("form", attrs, ...children);}
+export function form(attrsOrChild = undefined, ...remainingChildren) {return element("form", attrsOrChild, ...remainingChildren);}
 /**
  * @experimental https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/geolocation
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function geolocation(attrs, ...children) {return element("geolocation", attrs, ...children);}
+export function geolocation(attrsOrChild = undefined, ...remainingChildren) {return element("geolocation", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function h1(attrs, ...children) {return element("h1", attrs, ...children);}
+export function h1(attrsOrChild = undefined, ...remainingChildren) {return element("h1", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function h2(attrs, ...children) {return element("h2", attrs, ...children);}
+export function h2(attrsOrChild = undefined, ...remainingChildren) {return element("h2", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function h3(attrs, ...children) {return element("h3", attrs, ...children);}
+export function h3(attrsOrChild = undefined, ...remainingChildren) {return element("h3", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function h4(attrs, ...children) {return element("h4", attrs, ...children);}
+export function h4(attrsOrChild = undefined, ...remainingChildren) {return element("h4", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function h5(attrs, ...children) {return element("h5", attrs, ...children);}
+export function h5(attrsOrChild = undefined, ...remainingChildren) {return element("h5", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function h6(attrs, ...children) {return element("h6", attrs, ...children);}
+export function h6(attrsOrChild = undefined, ...remainingChildren) {return element("h6", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function header(attrs, ...children) {return element("header", attrs, ...children);}
+export function header(attrsOrChild = undefined, ...remainingChildren) {return element("header", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function hgroup(attrs, ...children) {return element("hgroup", attrs, ...children);}
+export function hgroup(attrsOrChild = undefined, ...remainingChildren) {return element("hgroup", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function hr(attrs, ...children) {return element("hr", attrs, ...children);}
+export function hr(attrsOrChild = undefined, ...remainingChildren) {return element("hr", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function i(attrs, ...children) {return element("i", attrs, ...children);}
+export function i(attrsOrChild = undefined, ...remainingChildren) {return element("i", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function iframe(attrs, ...children) {return element("iframe", attrs, ...children);}
+export function iframe(attrsOrChild = undefined, ...remainingChildren) {return element("iframe", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function img(attrs, ...children) {return element("img", attrs, ...children);}
+export function img(attrsOrChild = undefined, ...remainingChildren) {return element("img", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function input(attrs, ...children) {return element("input", attrs, ...children);}
+export function input(attrsOrChild = undefined, ...remainingChildren) {return element("input", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function ins(attrs, ...children) {return element("ins", attrs, ...children);}
+export function ins(attrsOrChild = undefined, ...remainingChildren) {return element("ins", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function kbd(attrs, ...children) {return element("kbd", attrs, ...children);}
+export function kbd(attrsOrChild = undefined, ...remainingChildren) {return element("kbd", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function label(attrs, ...children) {return element("label", attrs, ...children);}
+export function label(attrsOrChild = undefined, ...remainingChildren) {return element("label", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function legend(attrs, ...children) {return element("legend", attrs, ...children);}
+export function legend(attrsOrChild = undefined, ...remainingChildren) {return element("legend", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function li(attrs, ...children) {return element("li", attrs, ...children);}
+export function li(attrsOrChild = undefined, ...remainingChildren) {return element("li", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function link(attrs, ...children) {return element("link", attrs, ...children);}
+export function link(attrsOrChild = undefined, ...remainingChildren) {return element("link", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function main(attrs, ...children) {return element("main", attrs, ...children);}
+export function main(attrsOrChild = undefined, ...remainingChildren) {return element("main", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function map(attrs, ...children) {return element("map", attrs, ...children);}
+export function map(attrsOrChild = undefined, ...remainingChildren) {return element("map", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function mark(attrs, ...children) {return element("mark", attrs, ...children);}
+export function mark(attrsOrChild = undefined, ...remainingChildren) {return element("mark", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function math(attrs, ...children) {return element("math", attrs, ...children);}
+export function math(attrsOrChild = undefined, ...remainingChildren) {return element("math", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function menu(attrs, ...children) {return element("menu", attrs, ...children);}
+export function menu(attrsOrChild = undefined, ...remainingChildren) {return element("menu", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function meter(attrs, ...children) {return element("meter", attrs, ...children);}
+export function meter(attrsOrChild = undefined, ...remainingChildren) {return element("meter", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function nav(attrs, ...children) {return element("nav", attrs, ...children);}
+export function nav(attrsOrChild = undefined, ...remainingChildren) {return element("nav", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function noscript(attrs, ...children) {return element("noscript", attrs, ...children);}
+export function noscript(attrsOrChild = undefined, ...remainingChildren) {return element("noscript", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function object(attrs, ...children) {return element("object", attrs, ...children);}
+export function object(attrsOrChild = undefined, ...remainingChildren) {return element("object", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function ol(attrs, ...children) {return element("ol", attrs, ...children);}
+export function ol(attrsOrChild = undefined, ...remainingChildren) {return element("ol", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function optgroup(attrs, ...children) {return element("optgroup", attrs, ...children);}
+export function optgroup(attrsOrChild = undefined, ...remainingChildren) {return element("optgroup", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function option(attrs, ...children) {return element("option", attrs, ...children);}
+export function option(attrsOrChild = undefined, ...remainingChildren) {return element("option", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function output(attrs, ...children) {return element("output", attrs, ...children);}
+export function output(attrsOrChild = undefined, ...remainingChildren) {return element("output", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function p(attrs, ...children) {return element("p", attrs, ...children);}
+export function p(attrsOrChild = undefined, ...remainingChildren) {return element("p", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function picture(attrs, ...children) {return element("picture", attrs, ...children);}
+export function picture(attrsOrChild = undefined, ...remainingChildren) {return element("picture", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function pre(attrs, ...children) {return element("pre", attrs, ...children);}
+export function pre(attrsOrChild = undefined, ...remainingChildren) {return element("pre", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function progress(attrs, ...children) {return element("progress", attrs, ...children);}
+export function progress(attrsOrChild = undefined, ...remainingChildren) {return element("progress", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function q(attrs, ...children) {return element("q", attrs, ...children);}
+export function q(attrsOrChild = undefined, ...remainingChildren) {return element("q", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function rp(attrs, ...children) {return element("rp", attrs, ...children);}
+export function rp(attrsOrChild = undefined, ...remainingChildren) {return element("rp", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function rt(attrs, ...children) {return element("rt", attrs, ...children);}
+export function rt(attrsOrChild = undefined, ...remainingChildren) {return element("rt", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function ruby(attrs, ...children) {return element("ruby", attrs, ...children);}
+export function ruby(attrsOrChild = undefined, ...remainingChildren) {return element("ruby", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function s(attrs, ...children) {return element("s", attrs, ...children);}
+export function s(attrsOrChild = undefined, ...remainingChildren) {return element("s", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function samp(attrs, ...children) {return element("samp", attrs, ...children);}
+export function samp(attrsOrChild = undefined, ...remainingChildren) {return element("samp", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function script(attrs, ...children) {return element("script", attrs, ...children);}
+export function script(attrsOrChild = undefined, ...remainingChildren) {return element("script", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function search(attrs, ...children) {return element("search", attrs, ...children);}
+export function search(attrsOrChild = undefined, ...remainingChildren) {return element("search", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function section(attrs, ...children) {return element("section", attrs, ...children);}
+export function section(attrsOrChild = undefined, ...remainingChildren) {return element("section", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function select(attrs, ...children) {return element("select", attrs, ...children);}
+export function select(attrsOrChild = undefined, ...remainingChildren) {return element("select", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function slot(attrs, ...children) {return element("slot", attrs, ...children);}
+export function slot(attrsOrChild = undefined, ...remainingChildren) {return element("slot", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function small(attrs, ...children) {return element("small", attrs, ...children);}
+export function small(attrsOrChild = undefined, ...remainingChildren) {return element("small", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function source(attrs, ...children) {return element("source", attrs, ...children);}
+export function source(attrsOrChild = undefined, ...remainingChildren) {return element("source", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function span(attrs, ...children) {return element("span", attrs, ...children);}
+export function span(attrsOrChild = undefined, ...remainingChildren) {return element("span", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function strong(attrs, ...children) {return element("strong", attrs, ...children);}
+export function strong(attrsOrChild = undefined, ...remainingChildren) {return element("strong", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function style(attrs, ...children) {return element("style", attrs, ...children);}
+export function style(attrsOrChild = undefined, ...remainingChildren) {return element("style", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function sub(attrs, ...children) {return element("sub", attrs, ...children);}
+export function sub(attrsOrChild = undefined, ...remainingChildren) {return element("sub", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function summary(attrs, ...children) {return element("summary", attrs, ...children);}
+export function summary(attrsOrChild = undefined, ...remainingChildren) {return element("summary", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function sup(attrs, ...children) {return element("sup", attrs, ...children);}
+export function sup(attrsOrChild = undefined, ...remainingChildren) {return element("sup", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function svg(attrs, ...children) {return element("svg", attrs, ...children);}
+export function svg(attrsOrChild = undefined, ...remainingChildren) {return element("svg", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function table(attrs, ...children) {return element("table", attrs, ...children);}
+export function table(attrsOrChild = undefined, ...remainingChildren) {return element("table", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function tbody(attrs, ...children) {return element("tbody", attrs, ...children);}
+export function tbody(attrsOrChild = undefined, ...remainingChildren) {return element("tbody", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function td(attrs, ...children) {return element("td", attrs, ...children);}
+export function td(attrsOrChild = undefined, ...remainingChildren) {return element("td", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function template(attrs, ...children) {return element("template", attrs, ...children);}
+export function template(attrsOrChild = undefined, ...remainingChildren) {return element("template", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function textarea(attrs, ...children) {return element("textarea", attrs, ...children);}
+export function textarea(attrsOrChild = undefined, ...remainingChildren) {return element("textarea", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function tfoot(attrs, ...children) {return element("tfoot", attrs, ...children);}
+export function tfoot(attrsOrChild = undefined, ...remainingChildren) {return element("tfoot", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function th(attrs, ...children) {return element("th", attrs, ...children);}
+export function th(attrsOrChild = undefined, ...remainingChildren) {return element("th", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function thead(attrs, ...children) {return element("thead", attrs, ...children);}
+export function thead(attrsOrChild = undefined, ...remainingChildren) {return element("thead", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function time(attrs, ...children) {return element("time", attrs, ...children);}
+export function time(attrsOrChild = undefined, ...remainingChildren) {return element("time", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function title(attrs, ...children) {return element("title", attrs, ...children);}
+export function title(attrsOrChild = undefined, ...remainingChildren) {return element("title", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function tr(attrs, ...children) {return element("tr", attrs, ...children);}
+export function tr(attrsOrChild = undefined, ...remainingChildren) {return element("tr", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function track(attrs, ...children) {return element("track", attrs, ...children);}
+export function track(attrsOrChild = undefined, ...remainingChildren) {return element("track", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function u(attrs, ...children) {return element("u", attrs, ...children);}
+export function u(attrsOrChild = undefined, ...remainingChildren) {return element("u", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function ul(attrs, ...children) {return element("ul", attrs, ...children);}
+export function ul(attrsOrChild = undefined, ...remainingChildren) {return element("ul", attrsOrChild, ...remainingChildren);}
 /**
  * Var is capitalized to not conflict with the javascript keyword var.
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function Var(attrs, ...children) {return element("var", attrs, ...children);}
+export function Var(attrsOrChild = undefined, ...remainingChildren) {return element("var", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function video(attrs, ...children) {return element("video", attrs, ...children);}
+export function video(attrsOrChild = undefined, ...remainingChildren) {return element("video", attrsOrChild, ...remainingChildren);}
 /**
- * @param {Attrs} attrs
- * @param  {...ChildElement} children
+ * @param {(Attrs|ChildElement|undefined)} attrsOrChild
+ * @param  {...ChildElement} remainingChildren
  * @returns {HTMLElement}
  */
-export function wbr(attrs, ...children) {return element("wbr", attrs, ...children);}
+export function wbr(attrsOrChild = undefined, ...remainingChildren) {return element("wbr", attrsOrChild, ...remainingChildren);}
 //#endregion
