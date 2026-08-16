@@ -1,6 +1,6 @@
 //#region Type Definitions
 /**
- * A ChildNode is a child HTMLElement or string of another element.
+ * A ChildElement is an HTMLElement/string/function that represents the child of another element.
  * @typedef {(HTMLElement|string|Component)} ChildElement
  */
 
@@ -48,11 +48,14 @@
  */
 
 /**
+ * Function that executes when a signal is updated.
  * @callback Subscriber
  * @param {any} value
  */
 
 /**
+ * Function to update the value of a signal. The value is passed in as an argument
+ * and can be directly modified. The signal state will be set to whatever the function returns.
  * @callback Updater
  * @param {any} value
  * @returns {any}
@@ -75,7 +78,7 @@
  */
 
 /**
- * Maps an event into data used to set the value of a signal
+ * Maps an event into data used to set the value of a signal.
  * @callback MapEvent
  * @param {Event} event
  * @param {any} signalValue
@@ -83,7 +86,7 @@
  */
 
 /**
- * Maps an event into data used to set the value of a signal
+ * Maps an event into data used to set the value of a signal.
  * @callback MapAttr
  * @param {any} signalValue
  * @return {any}
@@ -115,7 +118,7 @@ export function $(init) {
 $.prototype.get = function() {return this._state;}
 
 /**
- * Sets the state of this signal and updates every subscriber.
+ * Sets the state of this signal and notifies every subscriber.
  * @param {any} value
  */
 $.prototype.set = function(value) {
@@ -126,7 +129,9 @@ $.prototype.set = function(value) {
 };
 
 /**
- * Uses a function to modify the current value then notify all subscribers.
+ * Uses a function to modify the current value of a signal.
+ * The signal state is set to the return value of the function.
+ * All subscribers are then notified.
  * @param {Updater} callback
  */
 $.prototype.update = function(callback) {
@@ -175,8 +180,7 @@ HTMLElement.prototype.$attrOut = function(signal, attr, mapAttr) {
 /**
  * Registers this element's children to be replaced with the result of the procreate callback
  * when the set method is called on this signal.
- * This can be called multiple on times an element for different attributes.
- * You should not call this multiple times on an element for the same attribute.
+ * This should only be called once per element.
  * @param {$} signal
  * @param {ProcreateMany} procreate
  * @return {HTMLElement}
@@ -189,10 +193,9 @@ HTMLElement.prototype.$childrenOut = function(signal, procreate) {
 };
 
 /**
- * Registers this element's children to be replaced with the result of the procreate callback
+ * Registers this element's child to be replaced with the result of the procreate callback
  * when the set method is called on this signal.
- * This can be called multiple on times an element for different attributes.
- * You should not call this multiple times on an element for the same attribute.
+ * This should only be called once per element.
  * @param {$} signal
  * @param {Procreate} procreate
  * @return {HTMLElement}
@@ -208,6 +211,7 @@ HTMLElement.prototype.$childOut = function(signal, procreate) {
 //#region Elements
 /**
  * This method allows modification of an element from within the component structure.
+ * It returns the element it was called on so your hierarchy in code is not disrupted.
  * ## Example
  * ```js
  * button({}).and(btn => btn.onclick = someFunction)
@@ -242,7 +246,8 @@ function renderElement(parent, child) {
 }
 
 /**
- * Basic element constructor. You shouldn't need this unless you need to create an element with a custom tag name.
+ * Basic element constructor. All provided tag functions call this.
+ * You shouldn't need this unless you need to create an element with a custom tag name.
  * For example, you might have a custom web component.
  * @param {string} name
  * @param {Attrs} attrs
@@ -320,7 +325,7 @@ function renderRoute(router, notFoundPath, routes) {
  *
  * Routes are used to configure a router. It is recommended to use a "/" path, but it's not required.
  * You can specify a fallback path and compose router objects.
- * The route must either be an HTMLElement, string, or a recursive route object.
+ * The route must either be an HTMLElement, string, function, or a recursive route object.
  * The router directly reads the `document.pathname`.
  * The router does not check to make sure your paths are reachable or has duplicates.
  * ## Example
@@ -358,8 +363,8 @@ export function router(notFoundPath, attrs, routes) {
 }
 
 /**
- * This is the entry point of the jsml app.
- * This appends ui as a child of the body after all other children.
+ * This is the entry point of the JSML app.
+ * This appends ui as a child of the body element after all other children.
  * @param {ChildElement} ui
  */
 export function jsml(ui) {renderElement(document.body, ui);}

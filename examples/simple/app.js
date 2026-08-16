@@ -32,12 +32,12 @@ function other() {
 	return div(
 		{style: "width:100%;height:100%;background:red;"},
 		div({}, "Other Page"),
-		a({
-			href: "/"},
+		a(
+			{href: "/"},
 			button({}, "Return to index")
 		),
-		a({
-			href: "/path/to"},
+		a(
+			{href: "/path/to"},
 			button({}, "Go to path")
 		),
 
@@ -47,50 +47,46 @@ function other() {
 }
 
 function tofile() {
-	return div({
-		style: "width:100%;height:100%;background:red;"},
+	return div(
+		{style: "width:100%;height:100%;background:red;"},
 		div({}, "File Page"),
-		a({
-			href: "/path/to/file"},
+		a(
+			{href: "/path/to/file"},
 			button({}, "Go to file")
 		)
 	);
 }
 
 function file() {
-	return div({
-		style: "width:100%;height:100%;background:red;"},
+	return div(
+		{style: "width:100%;height:100%;background:red;"},
 		div({}, "File Page"),
-		a({
-			href: "/"},
+		a(
+			{href: "/"},
 			button({}, "Return to index")
 		)
 	);
 }
 
 function notFound() {
-	return div({
-		style: "width:100%;height:100%;background:red;"},
+	return div(
+		{style: "width:100%;height:100%;background:red;"},
 		div({}, "404 Not Found"),
-		a({
-			href: "/"},
+		a(
+			{href: "/"},
 			button({}, "Return to index")
 		)
 	);
 }
 
-function main() {
-	jsml(
-		router("/404", {}, {
-			"/": index(),
-			"/other": other(),
-			"/path": {
-				"/to": tofile(),
-				"/to/file": file()
-			},
-			"/404": notFound()
-		})
-	);
-}
-
-main();
+jsml(
+	router("/404", {}, {
+		"/": index(),
+		"/other": other(),
+		"/path": {
+			"/to": tofile(),
+			"/to/file": file()
+		},
+		"/404": notFound()
+	})
+);

@@ -4,6 +4,8 @@
 	<meta charset="UTF-8">
 	<title>redirecting...</title>
 	<script>
+		// github pages doesn't support SPAs so we embed the path in the params and route based on that
+
 		// Preserve the full requested path (including /jsml prefix) as a query param,
 		// then redirect to the app root so index.html can restore it.
 		const path = location.pathname + location.search + location.hash;

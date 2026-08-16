@@ -8,6 +8,7 @@ so you just need to include jsml.js in your project,
 and you're good to go.
 This means JSML can be used with web components
 and other web frameworks if you want.
+Anything you can do with HTML, CSS, and JS can be done using JSML.
 
 ## Run examples
 ```sh
@@ -17,7 +18,8 @@ npm run dev
 ```
 
 ## Reference
-Also see the [simple example](./examples/simple/app.js).
+Also see the [simple example](./examples/simple/app.js)
+and the GH pages content.
 * [Start](#start)
 * [Elements](#elements)
   * [HTMLElement vs String vs Function](#when-to-use-a-function-vs-htmlelement-or-string)
@@ -45,7 +47,7 @@ In app.js, the jsml function is the entry point,
 and it renders everything when called.
 
 ```js
-import { jsml, div } from "/jsml.js";
+import { jsml, div } from "./jsml.js";
 
 jsml(
     div({}, "Hello, World!")
@@ -58,7 +60,7 @@ An element is something that can resolve to an HTML element.
 It can take multiple forms described below.
 JSML provides functions for supported HTML tags that can be found in a body.
 ```js
-import {div, button, a, img} from "/jsml.js";
+import {div, button, a, img} from "./jsml.js";
 
 function component() {
     return div({},
@@ -268,7 +270,7 @@ Vite is a good option for this.
 
 You can simply use a router in your jsml function like this:
 ```js
-import { jsml, div, router } from "/jsml.js";
+import { jsml, div, router } from "./jsml.js";
 
 jsml(
     router("/404", {}, {

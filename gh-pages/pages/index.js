@@ -1,5 +1,5 @@
 import {$, div} from "../../jsml.js";
 
 export function index() {
-    return "Hello, World!";
+    return "The JSML page is still under construction";
 }

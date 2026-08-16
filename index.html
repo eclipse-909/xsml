@@ -10,10 +10,13 @@
 </head>
 <body>
 	<script>
+		// github pages doesn't support SPAs so we embed the path in the params and route based on that
 		(function () {
 			const params = new URLSearchParams(location.search);
 			const redirectPath = params.get('p');
 			if (redirectPath) {
+				// Restore the real URL (e.g. /jsml/docs) without a page reload,
+				// stripping the ?p= param so it doesn't linger in the address bar.
 				history.replaceState(null, '', redirectPath);
 			}
 		})();
