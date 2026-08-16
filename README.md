@@ -206,7 +206,7 @@ function index() {
         button({"id": "counter-btn"}, "Increment")
             .$eventIn(counter, "click", (_, value) => value + 1),
         label({"for": "counter-btn"})
-            .$attrOut(counter, "textContent", value => `Counter: ${value}`)
+            .$childOut(counter, value => `Counter: ${value}`)
     );
 }
 ```

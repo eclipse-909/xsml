@@ -182,7 +182,7 @@ HTMLElement.prototype.$eventIn = function(signal, event, mapEvent) {
  * @return {HTMLElement}
  */
 HTMLElement.prototype.$attrOut = function(signal, attr, mapAttr) {
-	const update = value => this[attr] = mapAttr(value);
+	const update = value => this.setAttribute(attr, mapAttr(value));
 	update(signal.get());
 	signal._subs.push(update);
 	return this;
@@ -349,13 +349,13 @@ function displayRoute(routerElement, content) {
 }
 
 /**
- * @param {HTMLElement} router
+ * @param {HTMLElement} routerElement
  * @param {string} notFoundPath
  * @param {Routes} routes
  * @throws {Error}
  */
-function renderRoute(router, notFoundPath, routes) {
-	displayRoute(router, routes[location.pathname] ?? routes[notFoundPath]);
+function renderRoute(routerElement, notFoundPath, routes) {
+	displayRoute(routerElement, routes[location.pathname] ?? routes[notFoundPath]);
 }
 
 /**
