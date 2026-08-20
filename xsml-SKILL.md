@@ -1,40 +1,40 @@
 ---
-name: jsml
-description: Use this skill whenever building a front-end, web UI, single-page app, or multi-page client-rendered site with JSML (JavaScript Markup Language), a tiny dependency-free JS library by eclipse-909 (github.com/eclipse-909/jsml) for declaratively building HTML with plain JS functions plus a lightweight signal system for reactivity and a client-side router. Trigger this skill any time the user mentions "JSML", pastes or points at eclipse-909's jsml.js, or asks to add UI/pages/components/routing/reactivity to a project that already imports from a local "jsml.js" file — even if they just say "add a page" or "make this reactive" without naming JSML again. Do not use this for React, Vue, Svelte, or other unrelated frameworks, and do not confuse this with Java Speech Markup Language (an unrelated, unrelated-domain XML format that shares the acronym).
+name: xsml
+description: Use this skill whenever building a front-end, web UI, single-page app, or multi-page client-rendered site with XSML (JavaScript Markup Language), a tiny dependency-free JS library by eclipse-909 (github.com/eclipse-909/xsml) for declaratively building HTML with plain JS functions plus a lightweight signal system for reactivity and a client-side router. Trigger this skill any time the user mentions "XSML", pastes or points at eclipse-909's xsml.js, or asks to add UI/pages/components/routing/reactivity to a project that already imports from a local "xsml.js" file — even if they just say "add a page" or "make this reactive" without naming XSML again. Do not use this for React, Vue, Svelte, or other unrelated frameworks, and do not confuse this with Java Speech Markup Language (an unrelated, unrelated-domain XML format that shares the acronym).
 ---
 
-# JSML
+# XSML
 
-JSML is a ~1100-line, zero-dependency, zero-build-step JS library for client-rendered
+XSML is a ~1100-line, zero-dependency, zero-build-step JS library for client-rendered
 front-ends. There's no compiler, no JSX, no virtual DOM — every "component" is just a
 plain JS function that calls other plain JS functions and returns a real `HTMLElement`
 (or a string, which becomes text). It's small enough to read end-to-end, and doing so
 is often faster than searching for edge cases, since the source is the ground truth.
 
-Full source, docs, and an example app live at https://github.com/eclipse-909/jsml.
+Full source, docs, and an example app live at https://github.com/eclipse-909/xsml.
 The examples in that repo are explicitly **not** meant to model best practices — the
 maintainer wrote them fast, just to prove things work. Don't treat example code as
 idiomatic; treat the library semantics described below as the source of truth for
-patterns, but always re-fetch `jsml.js` itself (see Setup below) rather than
+patterns, but always re-fetch `xsml.js` itself (see Setup below) rather than
 assuming this skill's description of it is current — the library is actively
 evolving and can change out from under this skill's text.
 
 ## Setting up a project
 
-JSML is not published on npm — there is no package to install. You copy the single
-`jsml.js` file into your project and import from it directly:
+XSML is not published on npm — there is no package to install. You copy the single
+`xsml.js` file into your project and import from it directly:
 
 ```
 app/
 ├── app.js       # entry point
 ├── index.html   # loads app.js as a module script
-└── jsml.js      # copied from the repo, unmodified
+└── xsml.js      # copied from the repo, unmodified
 ```
 
 Fetch the current file from the repo (this env allows `raw.githubusercontent.com`):
 
 ```bash
-curl -o jsml.js https://raw.githubusercontent.com/eclipse-909/jsml/main/jsml.js
+curl -o xsml.js https://raw.githubusercontent.com/eclipse-909/xsml/main/xsml.js
 ```
 
 `index.html` just needs a module script tag pointing at your entry point:
@@ -43,13 +43,13 @@ curl -o jsml.js https://raw.githubusercontent.com/eclipse-909/jsml/main/jsml.js
 <script type="module" src="./app.js"></script>
 ```
 
-`app.js` imports what it needs and calls `jsml(...)` once, at the top level, to mount
+`app.js` imports what it needs and calls `xsml(...)` once, at the top level, to mount
 the whole UI into `document.body`:
 
 ```js
-import { jsml, div } from "./jsml.js";
+import { xsml, div } from "./xsml.js";
 
-jsml(
+xsml(
     div("Hello, World!")
 );
 ```
@@ -69,7 +69,7 @@ are intentionally not included. For anything not covered (a custom element / web
 component tag name, for instance), use the generic factory directly:
 
 ```js
-import { element } from "./jsml.js";
+import { element } from "./xsml.js";
 function myCustomElement() {
     return element("my-custom-element", { someAttr: "value" }, "child text");
 }
@@ -89,7 +89,7 @@ identically. Pass an attrs object only when you actually have attributes to set;
 omit it freely otherwise.
 
 ```js
-import { div, img, a, button } from "./jsml.js";
+import { div, img, a, button } from "./xsml.js";
 
 function card() {
     return div({ class: "card" },
@@ -115,7 +115,7 @@ someCondition ? div("shown") : undefined
 Anything else (a raw number, an object, etc.) throws at render time — coerce
 numbers to strings yourself, e.g. `String(count)`.
 
-**Strings only ever set `textContent`.** JSML never touches `innerHTML` or
+**Strings only ever set `textContent`.** XSML never touches `innerHTML` or
 `innerText`, specifically to avoid XSS — so you can safely interpolate untrusted
 text into a string child without escaping it yourself.
 
@@ -125,7 +125,7 @@ tradeoff, not just a style choice:
   passing its *result*) means it's built once, immediately, and kept around even
   while not visible (e.g. on another route) — cheap for small trees, wasteful for
   large/content-heavy ones.
-- Passing a **function reference** (not its result) means JSML calls it fresh each
+- Passing a **function reference** (not its result) means XSML calls it fresh each
   time it's rendered, and lets it be garbage-collected when not displayed. Signal
   state inside that function resets each time it's re-rendered, so if a subtree's
   local state needs to survive being hidden and shown again, prefer keeping it as a
@@ -159,13 +159,13 @@ time you need direct DOM access mid-expression (measuring size, focusing, attach
 a non-event property, etc.), not just for event handlers.
 
 **Don't set the same attribute/event/property more than once** across the attrs
-object, `.and()`, and signal subscribers (`$eventIn`/`$attrOut`) combined — JSML
+object, `.and()`, and signal subscribers (`$eventIn`/`$attrOut`) combined — XSML
 doesn't warn about this, it'll just result in whichever assignment runs last.
 
 ## Components
 
 There's no special component API — a "component" is just any function that returns
-something JSML can render (an `HTMLElement`, string, or another such function).
+something XSML can render (an `HTMLElement`, string, or another such function).
 Props are just regular function arguments, and they're **not reactive** unless you
 explicitly pass a signal as the prop and read `.get()` inside, or subscribe to it.
 
@@ -197,7 +197,7 @@ below instead — the static patterns above won't update on their own.
 name). Always call it with `new`:
 
 ```js
-import { $ } from "./jsml.js";
+import { $ } from "./xsml.js";
 const count = new $(0);
 ```
 
@@ -286,15 +286,15 @@ route function runs.
 If the user just wants a multi-page site, skip the router entirely — give each HTML
 file its own `<script type="module">` entry point, same as any static site.
 
-For a single-page app, `router(notFoundPath, routesTable)` builds a `div#jsml-router`
-that owns navigation. Mount it via `jsml(...)` exactly once — creating more than one
+For a single-page app, `router(notFoundPath, routesTable)` builds a `div#xsml-router`
+that owns navigation. Mount it via `xsml(...)` exactly once — creating more than one
 router in an app leads to undefined behavior, since each one independently attaches
 its own click/popstate listeners.
 
 ```js
-import { jsml, router } from "./jsml.js";
+import { xsml, router } from "./xsml.js";
 
-jsml(
+xsml(
     router("/404", {
         "/": index,
         "/other": other,
@@ -330,11 +330,11 @@ unstable and confirm with the user before relying on it.
 
 ## Gotchas checklist
 
-Skim this before shipping JSML code:
+Skim this before shipping XSML code:
 
-- Importing `jsml.js` patches `HTMLElement.prototype` globally with `and`,
+- Importing `xsml.js` patches `HTMLElement.prototype` globally with `and`,
   `$eventIn`, `$attrOut`, `$childrenOut`, and `$childOut`. If another library on the
-  page already defines any of those names on `HTMLElement.prototype`, `jsml.js`
+  page already defines any of those names on `HTMLElement.prototype`, `xsml.js`
   throws at import time — don't import it twice or alongside a library with
   colliding prototype extensions.
 - `{}` as the first arg to a tag function is optional, not required, when there are

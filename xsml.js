@@ -102,7 +102,7 @@ function checkSymbolConflicts() {
 		}
 	}
 	if (defined.length > 0) {
-		throw Error(`jsml: methods already defined by something else under HTMLElement.prototype: ${defined.join(", ")}`);
+		throw Error(`xsml: methods already defined by something else under HTMLElement.prototype: ${defined.join(", ")}`);
 	}
 }
 checkSymbolConflicts();
@@ -176,13 +176,17 @@ HTMLElement.prototype.$eventIn = function(signal, event, mapEvent) {
  * Registers this element's attribute to be updated when the set method is called on this signal.
  * This can be called multiple on times an element for different attributes.
  * You should not call this multiple times on an element for the same attribute.
+ *
+ * If the callback is undefined, the attribute will be directly set to the value of the signal.
  * @param {$} signal
  * @param {string} attr
- * @param {MapAttr} mapAttr
+ * @param {(MapAttr|undefined)} mapAttr
  * @return {HTMLElement}
  */
 HTMLElement.prototype.$attrOut = function(signal, attr, mapAttr) {
-	const update = value => this.setAttribute(attr, mapAttr(value));
+	const update = mapAttr === undefined
+		? value => this.setAttribute(attr, value)
+		: value => this.setAttribute(attr, mapAttr(value));
 	update(signal.get());
 	signal._subs.push(update);
 	return this;
@@ -192,12 +196,17 @@ HTMLElement.prototype.$attrOut = function(signal, attr, mapAttr) {
  * Registers this element's children to be replaced with the result of the procreate callback
  * when the set method is called on this signal.
  * This should only be called once per element.
+ *
+ * If the callback is undefined, it assumes the signal holds an array of valid elements
+ * and tries to render them directly.
  * @param {$} signal
- * @param {ProcreateMany} procreate
+ * @param {(ProcreateMany|undefined)} procreate
  * @return {HTMLElement}
  */
 HTMLElement.prototype.$childrenOut = function(signal, procreate) {
-	const update = value => this.replaceChildren(...procreate(value));
+	const update = procreate === undefined
+		? value => this.replaceChildren(...value)
+		: value => this.replaceChildren(...procreate(value));
 	update(signal.get());
 	signal._subs.push(update);
 	return this;
@@ -207,12 +216,17 @@ HTMLElement.prototype.$childrenOut = function(signal, procreate) {
  * Registers this element's child to be replaced with the result of the procreate callback
  * when the set method is called on this signal.
  * This should only be called once per element.
+ *
+ * If the callback is undefined, it assumes the signal holds a valid element
+ * and tries to render it directly.
  * @param {$} signal
- * @param {Procreate} procreate
+ * @param {(Procreate|undefined)} procreate
  * @return {HTMLElement}
  */
 HTMLElement.prototype.$childOut = function(signal, procreate) {
-	const update = value => this.replaceChildren(procreate(value));
+	const update = procreate === undefined
+		? value => this.replaceChildren(value)
+		: value => this.replaceChildren(procreate(value));
 	update(signal.get());
 	signal._subs.push(update);
 	return this;
@@ -391,7 +405,7 @@ export function router(notFoundPath, attrs, routes = undefined) {
 		routes = attrs;
 		attrs = {};
 	}
-	const router = div({ ...attrs, id: "jsml-router" });
+	const router = div({ ...attrs, id: "xsml-router" });
 	const collapsedRoutes = collapseRoutes(routes);
 	document.addEventListener('click', (e) => {
 		const link = e.target.closest('a');
@@ -414,11 +428,11 @@ export function router(notFoundPath, attrs, routes = undefined) {
 }
 
 /**
- * This is the entry point of the JSML app.
+ * This is the entry point of the XSML app.
  * This appends ui as a child of the body element after all other children.
  * @param {ChildElement} ui
  */
-export function jsml(ui) {renderElement(document.body, ui);}
+export function xsml(ui) {renderElement(document.body, ui);}
 //#endregion
 
 //#region Tag Functions

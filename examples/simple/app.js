@@ -1,4 +1,4 @@
-import {jsml, $, div, a, button, router, label, ul, li, link} from "./jsml.js";
+import {xsml, $, div, a, button, router, label, ul, li, link} from "./xsml.js";
 
 function printSomething() {
 	console.log("hello world");
@@ -86,7 +86,7 @@ function notFound() {
 	);
 }
 
-jsml(
+xsml(
 	router("/404", {
 		"/": index(),
 		"/other": other(),

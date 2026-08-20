@@ -1,14 +1,12 @@
-# JSML
-JavaScript Markup Language (JSML) is a very simple frontend web library.
+# XSML
+JavaScript Markup Language (XSML) is a very simple frontend web library.
 Its primary use is for client-side rendered single or multipage applications.
 
 There is no transpiler, no magic, and no additional dependencies.
-JSML is pure JavaScript,
-so you just need to include `jsml.js` in your project,
-and you're good to go.
-This means JSML can be used with web components
-and other web frameworks if you want.
-Anything you can do with HTML, CSS, and JS can be done using JSML.
+XSML is pure JavaScript, so you just need to include `xsml.js`
+in your project, and you're good to go. This means XSML can be
+used with web components and other web frameworks if you want.
+Anything you can do with HTML, CSS, and JS can be done using XSML.
 
 ## Run examples
 ```sh
@@ -31,24 +29,24 @@ Also see the GitHub pages content.
 * [Routing & Single-Page Applications](#routing--single-page-applications)
   * [Routing Table](#routing-table)
 ### Start
-Create the following files and copy jsml.js into your project.
+Create the following files and copy xsml.js into your project.
 ```txt
 app/
 ├── app.js
 ├── index.html
-└── jsml.js
+└── xsml.js
 ```
 Setup index.html how you like, and include your app script.
 ```html
 <script type="module" src="./app.js"></script>
 ```
-In app.js, the jsml function is the entry point,
+In app.js, the xsml function is the entry point,
 and it renders everything when called.
 
 ```js
-import { jsml, div } from "./jsml.js";
+import { xsml, div } from "./xsml.js";
 
-jsml(
+xsml(
     div("Hello, World!")
 );
 ```
@@ -57,9 +55,9 @@ If you open index.html in the browser, you should see `Hello, World!`.
 ### Elements
 An element is something that can resolve to an HTML element.
 It can take multiple forms described below.
-JSML provides functions for supported HTML tags that can be found in a body.
+XSML provides functions for supported HTML tags that can be found in a body.
 ```js
-import {div, button, a, img} from "./jsml.js";
+import {div, button, a, img} from "./xsml.js";
 
 function component() {
     return div(
@@ -75,7 +73,7 @@ These functions return an HTMLElement.
 #### When to use a function vs HTMLElement or string
 You can mix and match however you want.
 Strings, HTMLElements, and functions with no parameters that return
-any of these three types are all handled by JSML. You can also use
+any of these three types are all handled by XSML. You can also use
 arrays for statically repeating content.
 You can make the pages HTMLElements,
 use functions for areas with lots of content,
@@ -188,7 +186,7 @@ It will look like this
 ```
 
 ### Signals
-Signals are the reactive element of JSML.
+Signals are the reactive element of XSML.
 The dollar sign (`$`) represents "signal" everywhere in the code.
 
 Create a signal with any data.
@@ -230,7 +228,7 @@ someState.get(); // "new state"
 Setting and updating will notify subscribers of a change.
 
 You can manually add a subscriber to a signal if you need something to happen
-when a signal updates and it doesn't involve modifying an element.
+when a signal updates, and it doesn't involve modifying an element.
 ```js
 const someState = new $(0);
 someState.pushSub(value => console.log(`state was updated: ${value}`));
@@ -241,6 +239,8 @@ This will print to the console when someState is updated.
 `$childrenOut` uses the output of a signal to create children of an element.
 It's used for any control flow that uses signals and needs to make elements.
 ##### Loops
+For few repetitions or highly dynamic content, you can take a
+similar approach as before.
 ```js
 function component() {
     const list = new $(["first", "second", "third"]);
@@ -248,15 +248,28 @@ function component() {
         .$childrenOut(list, l => l.map(item => li(item)));
 }
 ```
+The issue here is that all child elements will be re-rendered
+when the list is updated.
+
+If you don't want to re-render each element every time, you could
+make the list itself contain HTMLElements.
+```js
+function component() {
+    const list = new $([li("first"), li("second"), li("third")]);
+    return ul().$childrenOut(list);
+}
+```
+Here you don't need a callback function because the signal contains
+an array of valid elements that can be rendered.
 
 ##### Conditionals
 `$childOut` does the same thing but for only one child element.
 This just avoids having to create an array with one element.
 ```js
 function component() {
-    const condition = new $(true);
+    const isImgCondition = new $(true);
     return div()
-        .$childOut(condition, isImg => isImg
+        .$childOut(isImgCondition, isImg => isImg
             ? img()
             : video()
         );
@@ -270,11 +283,11 @@ Each HTML file will need its own entry point.
 If you use a router, your server has to support client-side routing.
 Vite is a good option for this.
 
-You can simply use a router in your jsml function like this:
+You can simply use a router in your xsml function like this:
 ```js
-import { jsml, div, router } from "./jsml.js";
+import { xsml, div, router } from "./xsml.js";
 
-jsml(
+xsml(
     router("/404", {}, {
         "/": div("Hello, World!"),
         "/404": div("File Not Found"),

@@ -6,10 +6,10 @@
 	<script>
 		// github pages doesn't support SPAs so we embed the path in the params and route based on that
 
-		// Preserve the full requested path (including /jsml prefix) as a query param,
+		// Preserve the full requested path (including /xsml prefix) as a query param,
 		// then redirect to the app root so index.html can restore it.
 		const path = location.pathname + location.search + location.hash;
-		location.replace('/jsml/?p=' + encodeURIComponent(path));
+		location.replace('/xsml/?p=' + encodeURIComponent(path));
 	</script>
 </head>
 <body></body>

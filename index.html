@@ -4,9 +4,9 @@
 	<meta charset="UTF-8">
 	<meta
 		name="description"
-		content="JSML is a very simple pure JavaScript frontend web framework with no magic."
+		content="XSML is a very simple pure JavaScript frontend web framework with no magic."
 	/>
-	<title>JSML</title>
+	<title>XSML</title>
 </head>
 <body>
 	<script>
@@ -15,7 +15,7 @@
 			const params = new URLSearchParams(location.search);
 			const redirectPath = params.get('p');
 			if (redirectPath) {
-				// Restore the real URL (e.g. /jsml/docs) without a page reload,
+				// Restore the real URL (e.g. /xsml/docs) without a page reload,
 				// stripping the ?p= param so it doesn't linger in the address bar.
 				history.replaceState(null, '', redirectPath);
 			}

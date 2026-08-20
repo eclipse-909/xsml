@@ -1,5 +1,5 @@
-import {$, div} from "../../jsml.js";
+import {$, div} from "../../xsml.js";
 
 export function index() {
-    return "The JSML page is still under construction";
+    return "The XSML page is still under construction";
 }

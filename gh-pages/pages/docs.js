@@ -1,4 +1,4 @@
-import {$, div} from "../../jsml.js";
+import {$, div} from "../../xsml.js";
 
 export function docs() {
     return "Documentation";
