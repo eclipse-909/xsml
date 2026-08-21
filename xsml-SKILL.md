@@ -1,11 +1,11 @@
 ---
 name: xsml
-description: Use this skill whenever building a front-end, web UI, single-page app, or multi-page client-rendered site with XSML (JavaScript Markup Language), a tiny dependency-free JS library by eclipse-909 (github.com/eclipse-909/xsml) for declaratively building HTML with plain JS functions plus a lightweight signal system for reactivity and a client-side router. Trigger this skill any time the user mentions "XSML", pastes or points at eclipse-909's xsml.js, or asks to add UI/pages/components/routing/reactivity to a project that already imports from a local "xsml.js" file — even if they just say "add a page" or "make this reactive" without naming XSML again. Do not use this for React, Vue, Svelte, or other unrelated frameworks, and do not confuse this with Java Speech Markup Language (an unrelated, unrelated-domain XML format that shares the acronym).
+description: Use this skill whenever building a front-end, web UI, single-page app, or multi-page client-rendered site with xsml, a tiny dependency-free JS library by eclipse-909 (github.com/eclipse-909/xsml) for declaratively building HTML with plain JS functions plus a lightweight signal system for reactivity and a client-side router. Trigger this skill any time the user mentions "xsml", pastes or points at eclipse-909's xsml.js, or asks to add UI/pages/components/routing/reactivity to a project that already imports from a local "xsml.js" file — even if they just say "add a page" or "make this reactive" without naming xsml again. Do not use this for React, Vue, Svelte, or other unrelated frameworks, and do not confuse this with Java Speech Markup Language (an unrelated, unrelated-domain XML format that shares the acronym).
 ---
 
-# XSML
+# xsml
 
-XSML is a ~1100-line, zero-dependency, zero-build-step JS library for client-rendered
+xsml is a ~1100-line, zero-dependency, zero-build-step JS library for client-rendered
 front-ends. There's no compiler, no JSX, no virtual DOM — every "component" is just a
 plain JS function that calls other plain JS functions and returns a real `HTMLElement`
 (or a string, which becomes text). It's small enough to read end-to-end, and doing so
@@ -21,7 +21,7 @@ evolving and can change out from under this skill's text.
 
 ## Setting up a project
 
-XSML is not published on npm — there is no package to install. You copy the single
+xsml is not published on npm — there is no package to install. You copy the single
 `xsml.js` file into your project and import from it directly:
 
 ```
@@ -115,7 +115,7 @@ someCondition ? div("shown") : undefined
 Anything else (a raw number, an object, etc.) throws at render time — coerce
 numbers to strings yourself, e.g. `String(count)`.
 
-**Strings only ever set `textContent`.** XSML never touches `innerHTML` or
+**Strings only ever set `textContent`.** xsml never touches `innerHTML` or
 `innerText`, specifically to avoid XSS — so you can safely interpolate untrusted
 text into a string child without escaping it yourself.
 
@@ -125,7 +125,7 @@ tradeoff, not just a style choice:
   passing its *result*) means it's built once, immediately, and kept around even
   while not visible (e.g. on another route) — cheap for small trees, wasteful for
   large/content-heavy ones.
-- Passing a **function reference** (not its result) means XSML calls it fresh each
+- Passing a **function reference** (not its result) means xsml calls it fresh each
   time it's rendered, and lets it be garbage-collected when not displayed. Signal
   state inside that function resets each time it's re-rendered, so if a subtree's
   local state needs to survive being hidden and shown again, prefer keeping it as a
@@ -159,13 +159,13 @@ time you need direct DOM access mid-expression (measuring size, focusing, attach
 a non-event property, etc.), not just for event handlers.
 
 **Don't set the same attribute/event/property more than once** across the attrs
-object, `.and()`, and signal subscribers (`$eventIn`/`$attrOut`) combined — XSML
+object, `.and()`, and signal subscribers (`$eventIn`/`$attrOut`) combined — xsml
 doesn't warn about this, it'll just result in whichever assignment runs last.
 
 ## Components
 
 There's no special component API — a "component" is just any function that returns
-something XSML can render (an `HTMLElement`, string, or another such function).
+something xsml can render (an `HTMLElement`, string, or another such function).
 Props are just regular function arguments, and they're **not reactive** unless you
 explicitly pass a signal as the prop and read `.get()` inside, or subscribe to it.
 
@@ -330,7 +330,7 @@ unstable and confirm with the user before relying on it.
 
 ## Gotchas checklist
 
-Skim this before shipping XSML code:
+Skim this before shipping xsml code:
 
 - Importing `xsml.js` patches `HTMLElement.prototype` globally with `and`,
   `$eventIn`, `$attrOut`, `$childrenOut`, and `$childOut`. If another library on the

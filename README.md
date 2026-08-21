@@ -1,12 +1,13 @@
-# XSML
-JavaScript Markup Language (XSML) is a very simple frontend web library.
-Its primary use is for client-side rendered single or multipage applications.
+# xsml
+xsml (X-Script Markup Language or extra-small, either one is fine)
+is a very simple frontend web library. Its primary use is for
+client-side rendered single or multipage applications.
 
 There is no transpiler, no magic, and no additional dependencies.
-XSML is pure JavaScript, so you just need to include `xsml.js`
-in your project, and you're good to go. This means XSML can be
+xsml is pure JavaScript, so you just need to include `xsml.js`
+in your project, and you're good to go. This means xsml can be
 used with web components and other web frameworks if you want.
-Anything you can do with HTML, CSS, and JS can be done using XSML.
+Anything you can do with HTML, CSS, and JS can be done using xsml.
 
 ## Run examples
 ```sh
@@ -55,7 +56,7 @@ If you open index.html in the browser, you should see `Hello, World!`.
 ### Elements
 An element is something that can resolve to an HTML element.
 It can take multiple forms described below.
-XSML provides functions for supported HTML tags that can be found in a body.
+xsml provides functions for supported HTML tags that can be found in a body.
 ```js
 import {div, button, a, img} from "./xsml.js";
 
@@ -73,7 +74,7 @@ These functions return an HTMLElement.
 #### When to use a function vs HTMLElement or string
 You can mix and match however you want.
 Strings, HTMLElements, and functions with no parameters that return
-any of these three types are all handled by XSML. You can also use
+any of these three types are all handled by xsml. You can also use
 arrays for statically repeating content.
 You can make the pages HTMLElements,
 use functions for areas with lots of content,
@@ -186,7 +187,7 @@ It will look like this
 ```
 
 ### Signals
-Signals are the reactive element of XSML.
+Signals are the reactive element of xsml.
 The dollar sign (`$`) represents "signal" everywhere in the code.
 
 Create a signal with any data.

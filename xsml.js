@@ -333,6 +333,8 @@ function collapseRoutes(routes, collapsed = {}, pathname = "") {
 		if (routeType === 'string' || routeType === 'function' || route instanceof HTMLElement) {
 			collapsed[newPath] = route;
 		} else if (routeType === 'object') {
+			// If the route is an object, we can just assume it's a nested route table
+			// and hope it was configured correctly.
 			collapseRoutes(route, collapsed, newPath);
 		} else {
 			throw Error(`Invalid router configuration. Expected type HTMLElement/Component/Route/string, got ${routeType}`);
@@ -402,6 +404,8 @@ function renderRoute(routerElement, notFoundPath, routes) {
  */
 export function router(notFoundPath, attrs, routes = undefined) {
 	if (routes === undefined) {
+		// If routes is undefined then it means attributes weren't supplied,
+		// and the attrs variable actually contains the route table.
 		routes = attrs;
 		attrs = {};
 	}
@@ -428,7 +432,7 @@ export function router(notFoundPath, attrs, routes = undefined) {
 }
 
 /**
- * This is the entry point of the XSML app.
+ * This is the entry point of the xsml app.
  * This appends ui as a child of the body element after all other children.
  * @param {ChildElement} ui
  */
