@@ -1,0 +1,117 @@
+/*
+ * Custom highlight.js theme for the xsml docs site.
+ * Written following the highlight.js theme guide:
+ * https://highlightjs.readthedocs.io/en/latest/theme-guide.html
+ * Palette matches the dark theme defined in main.css.
+ */
+
+.hljs {
+	color: #e6e9f0;
+	background: transparent;
+}
+
+/* Comments */
+.hljs-comment,
+.hljs-quote {
+	color: #6b7386;
+	font-style: italic;
+}
+
+/* Keywords, control flow */
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-subst {
+	color: #ff8fb1;
+	font-weight: 600;
+}
+
+/* Literals: numbers, booleans, etc. */
+.hljs-number,
+.hljs-literal,
+.hljs-doctag {
+	color: #ffc98f;
+}
+
+/* Strings, regexps, template-literal text */
+.hljs-string,
+.hljs-regexp,
+.hljs-template-tag,
+.hljs-template-variable {
+	color: #a8e08f;
+}
+
+/* Function / class names and titles */
+.hljs-title,
+.hljs-title.function_,
+.hljs-title.class_,
+.hljs-section {
+	color: #9aa8ff;
+	font-weight: 600;
+}
+
+/* Built-ins, native functions, class attributes */
+.hljs-built_in,
+.hljs-type,
+.hljs-class .hljs-title {
+	color: #7cd6e8;
+}
+
+/* Variables, parameters, attributes */
+.hljs-variable,
+.hljs-params,
+.hljs-attr,
+.hljs-attribute {
+	color: #e6e9f0;
+}
+
+/* HTML/XML tags and their names */
+.hljs-tag {
+	color: #9aa3b5;
+}
+
+.hljs-name {
+	color: #ff8fb1;
+}
+
+/* HTML attribute values, CSS selectors */
+.hljs-selector-id,
+.hljs-selector-class,
+.hljs-selector-attr,
+.hljs-selector-pseudo {
+	color: #ffc98f;
+}
+
+/* Meta info (e.g. shebangs, decorators, css @-rules) */
+.hljs-meta,
+.hljs-meta .hljs-keyword {
+	color: #7c8cff;
+}
+
+/* Symbols / punctuation used for emphasis in markup */
+.hljs-symbol,
+.hljs-bullet,
+.hljs-link {
+	color: #a8e08f;
+}
+
+.hljs-emphasis {
+	font-style: italic;
+}
+
+.hljs-strong {
+	font-weight: 700;
+}
+
+.hljs-deletion {
+	color: #ff8fb1;
+	background: rgba(255, 143, 177, 0.12);
+}
+
+.hljs-addition {
+	color: #a8e08f;
+	background: rgba(168, 224, 143, 0.12);
+}
+
+.hljs-formula {
+	color: #7cd6e8;
+}
