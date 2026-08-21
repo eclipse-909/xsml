@@ -7,8 +7,7 @@ xsml([
 	// Stylesheets are declared as regular xsml elements (see examples/simple) so this
 	// page never needs to touch the root index.html. They only need to be rendered once,
 	// so they live outside the router instead of inside every page.
-	link({rel: "stylesheet", href: "/xsml/gh-pages/styles/main.css"}),
-	link({rel: "stylesheet", href: "/xsml/gh-pages/styles/hljs-theme.css"}),
+
 	router("/xsml/not-found", {
 		"/xsml": { // gh pages puts the site at /xsml
 			"/": index,
