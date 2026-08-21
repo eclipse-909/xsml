@@ -1,10 +1,9 @@
-import {div, section, h1, h2, h3, p, a, span} from "../../xsml.js";
+import {div, section, h1, h2, h3, p, a, span, $, button, label} from "../../xsml.js";
 import {pageLayout} from "../components/layout.js";
 import {codeBlock} from "../components/codeBlock.js";
 
 const HERO_EXAMPLE = `
 import { xsml, div, button, label, $ } from "./xsml.js";
-
 function counter() {
     const count = new $(0);
     return div(
@@ -14,7 +13,6 @@ function counter() {
             .$childOut(count, value => \`Counter: \${value}\`)
     );
 }
-
 xsml(counter());
 `;
 
@@ -26,6 +24,8 @@ function feature(title, description) {
 }
 
 export function index() {
+	const count = new $(0);
+
 	return pageLayout("index-content",
 		section({class: "hero"},
 			div({class: "hero-text"},
@@ -44,7 +44,11 @@ export function index() {
 				)
 			),
 			div({class: "hero-code"},
-				codeBlock("javascript", HERO_EXAMPLE)
+				codeBlock("javascript", HERO_EXAMPLE),
+				button({class: "btn btn-primary", id: "counter-btn"}, "Increment")
+					.$eventIn(count, "click", (_, value) => value + 1),
+				label({class: "counter-label", for: "counter-btn"})
+					.$childOut(count, value => `Counter: ${value}`)
 			)
 		),
 		section({class: "features"},

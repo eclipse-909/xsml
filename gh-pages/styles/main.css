@@ -140,10 +140,13 @@ h1, h2, h3 {
 	padding: 1.5rem;
 	display: flex;
 	align-items: center;
-	justify-content: space-between;
-	gap: 1rem;
 	flex-wrap: wrap;
 	font-size: 0.9rem;
+	text-align: center;
+}
+
+.footer-item {
+	flex: 1 1 0;
 }
 
 .footer-link {
@@ -193,7 +196,7 @@ h1, h2, h3 {
 
 .hero {
 	display: grid;
-	grid-template-columns: 1.1fr 1fr;
+	grid-template-columns: 1fr 1.3125fr;
 	gap: 3rem;
 	align-items: center;
 	padding: 3rem 0 4rem;
@@ -231,6 +234,10 @@ h1, h2, h3 {
 
 .hero-code {
 	min-width: 0;
+}
+
+.counter-label {
+	padding-left: 20px;
 }
 
 /* Feature grid */

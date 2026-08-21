@@ -37,9 +37,10 @@ app/
 ├── index.html
 └── xsml.js
 ```
-Setup index.html how you like, and include your app script.
+Setup index.html how you like, and include your
+app script in or after the body.
 ```html
-<script type="module" src="./app.js"></script>
+<script type="module" async src="./app.js"></script>
 ```
 In app.js, the xsml function is the entry point,
 and it renders everything when called.
@@ -52,6 +53,12 @@ xsml(
 );
 ```
 If you open index.html in the browser, you should see `Hello, World!`.
+
+If you are seeing white flashes upon loading (likely for
+bigger applications but probably not noticable for hello world),
+There is a fix. The xsml function sets the html visibility to true
+after everything has rendered. You can set `style="visibility:hidden;"`
+on the html tag, and the page will show once everything is rendered.
 
 ### Elements
 An element is something that can resolve to an HTML element.
