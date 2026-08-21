@@ -453,6 +453,12 @@ export function router(notFoundPath, attrs, routes = undefined) {
  * @param {ChildElement} ui
  */
 export function xsml(ui) {
+	window.onbeforeunload = (_) => {
+		document.documentElement.style.visibility = 'hidden';
+	};
+	window.onload = (_) => {
+		document.documentElement.style.visibility = 'visible';
+	};
 	renderElement(document.body, ui);
 	document.documentElement.style.visibility = 'visible';
 }
