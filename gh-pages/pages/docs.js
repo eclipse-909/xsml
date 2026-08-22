@@ -539,6 +539,9 @@ const TOPICS = [
 
 export function docs() {
 	const activeTopic = new $(TOPICS[0].id);
+	// Tracks each tab's scroll position individually, so switching tabs
+	// doesn't carry over the scroll offset from the tab you just left.
+	const scrollPositions = {};
 
 	return pageLayout("docs-content",
 		div({class: "docs-layout"},
@@ -547,7 +550,10 @@ export function docs() {
 					TOPICS.map(topic =>
 						li({class: "docs-tab-item"},
 							button({class: "docs-tab", type: "button"}, topic.title)
-								.and(btn => btn.onclick = () => activeTopic.set(topic.id))
+								.and(btn => btn.onclick = () => {
+									scrollPositions[activeTopic.get()] = window.scrollY;
+									activeTopic.set(topic.id);
+								})
 								.$attrOut(activeTopic, "class", value =>
 									value === topic.id ? "docs-tab docs-tab-active" : "docs-tab"
 								)
@@ -556,7 +562,11 @@ export function docs() {
 				)
 			),
 			section({class: "docs-main"})
-				.$childrenOut(activeTopic, id => TOPICS.find(topic => topic.id === id).render())
+				.$childrenOut(activeTopic, id => {
+					const content = TOPICS.find(topic => topic.id === id).render();
+					requestAnimationFrame(() => window.scrollTo(0, scrollPositions[id] ?? 0));
+					return content;
+				})
 		)
 	);
 }
