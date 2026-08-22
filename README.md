@@ -17,7 +17,8 @@ npm run dev
 ```
 
 ## Reference
-Also see the GitHub pages content.
+Also see the GitHub pages content 
+(disclaimer: ./gh-pages was mostly AI generated).
 * [Start](#start)
 * [Elements](#elements)
   * [HTMLElement vs String vs Function](#when-to-use-a-function-vs-htmlelement-or-string)

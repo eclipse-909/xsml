@@ -389,6 +389,61 @@ h1, h2, h3 {
 	max-width: 42rem;
 }
 
+/* Doc callouts (good/bad examples, notes) */
+
+.docs-callout {
+	margin: 1rem 0 1.5rem;
+	padding: 0.85rem 1.1rem;
+	border-radius: var(--radius);
+	border: 1px solid var(--border);
+	background: var(--bg-elevated);
+	max-width: 42rem;
+}
+
+.docs-callout p {
+	margin: 0;
+	max-width: none;
+}
+
+.docs-callout-label {
+	display: inline-block;
+	font-family: var(--font-mono);
+	font-size: 0.72rem;
+	font-weight: 700;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+	padding: 0.1rem 0.5rem;
+	border-radius: 5px;
+	margin-bottom: 0.5rem;
+}
+
+.docs-callout-good {
+	border-color: #2e6b4f;
+}
+
+.docs-callout-good .docs-callout-label {
+	color: #6fe3ac;
+	background: rgba(111, 227, 172, 0.12);
+}
+
+.docs-callout-bad {
+	border-color: #6b3a3a;
+}
+
+.docs-callout-bad .docs-callout-label {
+	color: #ff9b9b;
+	background: rgba(255, 155, 155, 0.12);
+}
+
+.docs-callout-note {
+	border-color: var(--border);
+}
+
+.docs-callout-note .docs-callout-label {
+	color: var(--accent-strong);
+	background: rgba(124, 140, 255, 0.12);
+}
+
 /* Code blocks */
 
 .code-block {
