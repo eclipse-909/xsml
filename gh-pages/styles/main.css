@@ -12,6 +12,7 @@
 	--accent-contrast: #0b0e14;
 	--radius: 10px;
 	--max-width: 1100px;
+	--header-height: 4rem;
 	--font-sans: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
 	--font-mono: "Fira Code", "JetBrains Mono", Consolas, "SFMono-Regular", Menlo, monospace;
 }
@@ -80,12 +81,18 @@ h1, h2, h3 {
 	z-index: 10;
 	background: rgba(11, 14, 20, 0.85);
 	backdrop-filter: blur(8px);
-	border-bottom: 1px solid var(--border);
+	/* A real border-bottom adds to the header's layout height, which doesn't
+	   match --header-height used to position the docs sidebar below it —
+	   causing a 1px shift depending on scroll position. A box-shadow paints
+	   the same 1px line without affecting layout, so the header's height is
+	   always exactly --header-height regardless of scroll. */
+	box-shadow: 0 1px 0 0 var(--border);
 }
 
 .nav-container {
 	max-width: var(--max-width);
 	margin: 0 auto;
+	min-height: var(--header-height);
 	padding: 0.9rem 1.5rem;
 	display: flex;
 	align-items: center;
@@ -328,7 +335,12 @@ h1, h2, h3 {
 
 .docs-sidebar {
 	position: sticky;
-	top: 5rem;
+	/* Matches the header height plus the page-content top padding exactly,
+	   so the sidebar's resting (unscrolled) position and its stuck position
+	   are identical — otherwise it visibly shifts the first time the page
+	   is scrolled, which is jarring when switching between a scrolled and
+	   an unscrolled tab. */
+	top: calc(var(--header-height) + 2.5rem);
 }
 
 .docs-tab-list {
