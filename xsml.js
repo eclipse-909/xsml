@@ -1,5 +1,5 @@
 /*#region License
-Copyright 2026 Ethan Morton
+Copyright © 2026 Ethan Morton
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -43,6 +43,7 @@ limitations under the License.
  * The route must either be an HTMLElement, string, or another route object.
  * The router directly reads the `document.pathname`.
  * The router does not check to make sure your paths are reachable or has duplicates.
+ * The router will try adding or removing a trailing slash in the pathname before falling back to the 404.
  * ## Example
  * ```js
  * router("/404", {
@@ -387,7 +388,14 @@ function displayRoute(routerElement, content) {
  * @throws {Error}
  */
 function renderRoute(routerElement, notFoundPath, routes) {
-	displayRoute(routerElement, routes[location.pathname] ?? routes[notFoundPath]);
+	displayRoute(
+		routerElement,
+		routes[location.pathname] // try the pathname
+			?? (location.pathname.endsWith("/") // but if it doesn't exist...
+				? routes[location.pathname.substring(0, location.pathname.length - 1)] // try removing the slash
+				: routes[location.pathname + "/"]) // or try adding a slash
+			?? routes[notFoundPath] // or use the 404
+	);
 }
 
 /**
@@ -400,6 +408,7 @@ function renderRoute(routerElement, notFoundPath, routes) {
  * The route must either be an HTMLElement, string, function, or a recursive route object.
  * The router directly reads the `document.pathname`.
  * The router does not check to make sure your paths are reachable or has duplicates.
+ * The router will try adding or removing a trailing slash in the pathname before falling back to the 404.
  * ## Example
  * ```js
  * router("/404", {
@@ -452,16 +461,7 @@ export function router(notFoundPath, attrs, routes = undefined) {
  * This appends ui as a child of the body element after all other children.
  * @param {ChildElement} ui
  */
-export function xsml(ui) {
-	window.onbeforeunload = (_) => {
-		document.documentElement.style.visibility = 'hidden';
-	};
-	window.onload = (_) => {
-		document.documentElement.style.visibility = 'visible';
-	};
-	renderElement(document.body, ui);
-	document.documentElement.style.visibility = 'visible';
-}
+export function xsml(ui) {renderElement(document.body, ui);}
 //#endregion
 
 //#region Tag Functions

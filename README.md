@@ -54,12 +54,6 @@ xsml(
 ```
 If you open index.html in the browser, you should see `Hello, World!`.
 
-If you are seeing white flashes upon loading (likely for
-bigger applications but probably not noticable for hello world),
-There is a fix. The xsml function sets the html visibility to true
-after everything has rendered. You can set `style="visibility:hidden;"`
-on the html tag, and the page will show once everything is rendered.
-
 ### Elements
 An element is something that can resolve to an HTML element.
 It can take multiple forms described below.
@@ -313,6 +307,8 @@ xsml(
 - The router should only be used once in an entire application
 - The router doesn't check for duplicate or unreachable routes
 - Slashes are not automatically inserted in the routing table
+  - However, the router will try adding or removing a trailing slash
+in the pathname before falling back to the 404 page
 
 #### Routing Table
 ##### Keys

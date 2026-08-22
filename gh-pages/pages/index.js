@@ -32,7 +32,7 @@ export function index() {
 				span({class: "hero-badge"}, "no build step \u00b7 no dependencies"),
 				h1("Build UIs with plain JavaScript."),
 				p({class: "hero-subtitle"},
-					"xsml (extra-small markup) is a tiny, zero-dependency frontend library. " +
+					"xsml is a tiny, zero-dependency frontend library. " +
 					"No transpiler, no virtual DOM, no magic \u2014 just functions that return real HTMLElements."
 				),
 				div({class: "hero-actions"},

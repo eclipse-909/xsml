@@ -44,9 +44,6 @@ pointing at your entry point:
 <script type="module" async src="./app.js"></script>
 ```
 
-The html tag in the html file should have its visibility style set to
-hidden to avoid a flash while the app is rendering.
-
 `app.js` imports what it needs and calls `xsml(...)` once, at the top level, to mount
 the whole UI into `document.body`:
 

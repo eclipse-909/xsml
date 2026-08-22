@@ -10,7 +10,7 @@ app/
 `;
 
 const START_HTML = `
-<script type="module" src="./app.js"></script>
+<script type="module" async src="./app.js"></script>
 `;
 
 const START_JS = `
@@ -120,7 +120,7 @@ const TOPICS = [
 			h2("Start"),
 			p("Create the following files and copy ", code("xsml.js"), " into your project."),
 			codeBlock("html", START_EXAMPLE),
-			p("Set up ", code("index.html"), " how you like, and include your app script."),
+			p("Set up ", code("index.html"), " how you like, and include your app script. The script should go in or after the body."),
 			codeBlock("html", START_HTML),
 			p("In ", code("app.js"), ", the ", code("xsml"), " function is the entry point, and it renders everything when called."),
 			codeBlock("javascript", START_JS),

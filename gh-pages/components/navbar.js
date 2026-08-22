@@ -1,4 +1,4 @@
-import {header, div, a, nav, span} from "../../xsml.js";
+import {header, div, a, nav, span, img} from "../../xsml.js";
 
 /**
  * Site-wide navigation bar. Shown on every page.
@@ -15,7 +15,7 @@ export function navbar() {
 				a({href: "/xsml/docs", class: "nav-link"}, "Docs"),
 				a(
 					{href: "https://github.com/eclipse-909/xsml", class: "nav-link nav-link-github", target: "_blank", rel: "noopener noreferrer"},
-					"GitHub"
+					img({src: "gh-pages/images/GitHub_Invertocat_White_Clearspace.png", alt: "GitHub", width: "25px"})
 				)
 			)
 		)

@@ -127,6 +127,10 @@ h1, h2, h3 {
 	text-decoration: none;
 }
 
+.nav-link-github {
+	line-height: 0;
+}
+
 /* Footer */
 
 .site-footer {
