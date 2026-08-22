@@ -1,4 +1,4 @@
-import {$, div, aside, ul, li, button, h2, h3, p, section, code, a, label, video, img, strong} from "../../xsml.js";
+import {$, div, aside, ul, li, button, h2, h3, p, section, code, a, strong} from "../../xsml.js";
 import {pageLayout} from "../components/layout.js";
 import {codeBlock} from "../components/codeBlock.js";
 
@@ -549,10 +549,10 @@ export function docs() {
 				ul({class: "docs-tab-list"},
 					TOPICS.map(topic =>
 						li({class: "docs-tab-item"},
-							button({class: "docs-tab", type: "button"}, topic.title)
-								.and(btn => btn.onclick = () => {
-									scrollPositions[activeTopic.get()] = window.scrollY;
-									activeTopic.set(topic.id);
+							button({type: "button"}, topic.title)
+								.$eventIn(activeTopic, "click", (_, active) => {
+									scrollPositions[active] = window.scrollY;
+									return topic.id;
 								})
 								.$attrOut(activeTopic, "class", value =>
 									value === topic.id ? "docs-tab docs-tab-active" : "docs-tab"
