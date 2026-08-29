@@ -38,6 +38,23 @@ app/
 ├── index.html
 └── xsml.js
 ```
+Alternatively, you can use a package manager to install xsml and point it at the github repository.
+
+npm example:
+```json
+{
+	"dependencies": {
+		"xsml": "git://github.com/eclipse-909/xsml.git"
+	},
+}
+```
+
+Then you would just need to import it like this.
+
+```js
+import { xsml } from "xsml/xsml.js";
+```
+
 Setup index.html how you like, and include your
 app script in or after the body.
 ```html

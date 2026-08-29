@@ -37,6 +37,23 @@ Fetch the current file from the repo (this env allows `raw.githubusercontent.com
 curl -o xsml.js https://raw.githubusercontent.com/eclipse-909/xsml/main/xsml.js
 ```
 
+Alternatively, you can use a package manager to install xsml and point it at the github repository.
+
+npm example:
+```json
+{
+	"dependencies": {
+		"xsml": "git://github.com/eclipse-909/xsml.git"
+	},
+}
+```
+
+Then you would just need to import it like this.
+
+```js
+import { xsml } from "xsml/xsml.js";
+```
+
 `index.html` just needs a module script tag in or after the body
 pointing at your entry point:
 
