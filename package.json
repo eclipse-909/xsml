@@ -1,6 +1,14 @@
 {
 	"name": "xsml",
 	"version": "0.1.0",
+	"description": "xsml is a very simple frontend web library. Its primary use is for client-side rendered single or multipage applications.",
+	"keywords": ["xsml", "ui", "frontend", "csr", "spa"],
+	"license": "Apache-2.0",
+	"browser": "xsml.js",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/eclipse-909/xsml.git"
+	},
 	"private": true,
 	"type": "module",
 	"scripts": {
